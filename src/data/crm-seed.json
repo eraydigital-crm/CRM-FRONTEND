@@ -1,0 +1,234 @@
+{
+  "clients": [
+    {
+      "id": "sophie-laurent",
+      "name": "Sophie Laurent",
+      "company": "Atelier Nord",
+      "role": "Directrice Marketing",
+      "email": "sophie.laurent@ateliernord.fr",
+      "phone": "+33 6 12 34 56 78",
+      "city": "Lyon",
+      "sector": "E-commerce",
+      "owner": "Léa Martin",
+      "status": "vip",
+      "priority": "high",
+      "tags": ["Grand compte", "Renouvellement"],
+      "value": 82500,
+      "lastContact": "il y a 2 h",
+      "initials": "SL",
+      "color": "from-blue-500 to-violet-500"
+    },
+    {
+      "id": "marc-dubois",
+      "name": "Marc Dubois",
+      "company": "Logipro Industries",
+      "role": "CEO",
+      "email": "m.dubois@logipro.com",
+      "phone": "+33 6 22 45 87 12",
+      "city": "Paris",
+      "sector": "Industrie",
+      "owner": "Antoine Roy",
+      "status": "actif",
+      "priority": "high",
+      "tags": ["Négociation", "Q2"],
+      "value": 120000,
+      "lastContact": "hier",
+      "initials": "MD",
+      "color": "from-violet-500 to-fuchsia-500"
+    },
+    {
+      "id": "aya-benali",
+      "name": "Aya Benali",
+      "company": "Studio Kova",
+      "role": "Fondatrice",
+      "email": "aya@kova.studio",
+      "phone": "+33 7 55 09 21 43",
+      "city": "Marseille",
+      "sector": "Design",
+      "owner": "Léa Martin",
+      "status": "prospect",
+      "priority": "medium",
+      "tags": ["Découverte"],
+      "value": 18500,
+      "lastContact": "il y a 3 j",
+      "initials": "AB",
+      "color": "from-sky-500 to-blue-500"
+    },
+    {
+      "id": "julien-perrin",
+      "name": "Julien Perrin",
+      "company": "GreenTech Solutions",
+      "role": "Head of Sales",
+      "email": "julien.perrin@greentech.io",
+      "phone": "+33 6 78 90 12 34",
+      "city": "Nantes",
+      "sector": "Cleantech",
+      "owner": "Chloé Bernard",
+      "status": "actif",
+      "priority": "medium",
+      "tags": ["Upsell"],
+      "value": 46200,
+      "lastContact": "il y a 1 j",
+      "initials": "JP",
+      "color": "from-emerald-500 to-teal-500"
+    },
+    {
+      "id": "elena-rossi",
+      "name": "Elena Rossi",
+      "company": "Maison Verre",
+      "role": "Directrice Achats",
+      "email": "e.rossi@maisonverre.com",
+      "phone": "+33 6 90 12 87 65",
+      "city": "Bordeaux",
+      "sector": "Retail",
+      "owner": "Antoine Roy",
+      "status": "prospect",
+      "priority": "low",
+      "tags": ["Nurturing"],
+      "value": 9800,
+      "lastContact": "il y a 5 j",
+      "initials": "ER",
+      "color": "from-pink-500 to-rose-500"
+    },
+    {
+      "id": "thomas-noel",
+      "name": "Thomas Noël",
+      "company": "Cabinet Noël & Associés",
+      "role": "Associé",
+      "email": "t.noel@noelassocies.fr",
+      "phone": "+33 6 11 22 33 44",
+      "city": "Toulouse",
+      "sector": "Conseil",
+      "owner": "Chloé Bernard",
+      "status": "inactif",
+      "priority": "low",
+      "tags": ["À réactiver"],
+      "value": 24000,
+      "lastContact": "il y a 3 sem",
+      "initials": "TN",
+      "color": "from-amber-500 to-orange-500"
+    }
+  ],
+  "kpis": [
+    { "label": "Prospects", "value": "248", "delta": "+12%", "tone": "brand" },
+    { "label": "Clients actifs", "value": "126", "delta": "+4%", "tone": "success" },
+    { "label": "Opportunités gagnées", "value": "38", "delta": "+8%", "tone": "violet" },
+    { "label": "Opportunités perdues", "value": "9", "delta": "-2%", "tone": "destructive" },
+    { "label": "CA potentiel", "value": "482 K MGA", "delta": "+18%", "tone": "brand" },
+    { "label": "CA signé", "value": "215 K MGA", "delta": "+22%", "tone": "success" },
+    { "label": "Taux de conversion", "value": "34%", "delta": "+3 pts", "tone": "violet" }
+  ],
+  "clientEvents": [
+    { "id": "h1", "channel": "call", "title": "Appel de qualification", "client": "Sophie Laurent", "owner": "Léa Martin", "date": "07/07/2026", "time": "09:30", "direction": "past", "summary": "Besoins Q3 clarifiés, budget confirmé." },
+    { "id": "h2", "channel": "whatsapp", "title": "Discussion WhatsApp — logistique RDV", "client": "Sophie Laurent", "owner": "Léa Martin", "date": "07/07/2026", "time": "17:12", "direction": "past", "summary": "Confirmation présence Marc à la démo." },
+    { "id": "h3", "channel": "email", "title": "Envoi du cahier des charges", "client": "Sophie Laurent", "owner": "Léa Martin", "date": "06/07/2026", "time": "11:20", "direction": "past" },
+    { "id": "h4", "channel": "meeting", "title": "Présentation maquette v1", "client": "Sophie Laurent", "owner": "Léa Martin", "date": "12/07/2026", "time": "14:00", "direction": "upcoming", "summary": "Présenter la maquette Figma finale." },
+    { "id": "h5", "channel": "email", "title": "Envoyer proposition commerciale", "client": "Sophie Laurent", "owner": "Léa Martin", "date": "15/07/2026", "time": "09:30", "direction": "upcoming" },
+    { "id": "h6", "channel": "call", "title": "Relance signature contrat", "client": "Marc Dubois", "owner": "Antoine Roy", "date": "05/07/2026", "time": "10:00", "direction": "past" },
+    { "id": "h7", "channel": "meeting", "title": "Démo produit — module Pipeline", "client": "Marc Dubois", "owner": "Antoine Roy", "date": "09/07/2026", "time": "11:00", "direction": "upcoming" },
+    { "id": "h8", "channel": "whatsapp", "title": "Échange WhatsApp — prix option Enterprise", "client": "Marc Dubois", "owner": "Antoine Roy", "date": "04/07/2026", "time": "18:45", "direction": "past" },
+    { "id": "h9", "channel": "email", "title": "Envoi devis renouvellement", "client": "Elena Rossi", "owner": "Antoine Roy", "date": "06/07/2026", "time": "10:15", "direction": "past" },
+    { "id": "h10", "channel": "call", "title": "Prochain appel de suivi", "client": "Elena Rossi", "owner": "Antoine Roy", "date": "14/07/2026", "time": "15:00", "direction": "upcoming" }
+  ],
+  "activities": [
+    { "id": "a1", "type": "call", "title": "Appel de qualification", "client": "Sophie Laurent", "owner": "Léa Martin", "date": "Aujourd'hui", "time": "09:30", "duration": "1 heure", "status": "terminé", "priority": "high", "summary": "Discussion des besoins Q3", "result": "Intéressée par l'offre Premium" },
+    { "id": "a2", "type": "meeting", "title": "Rendez-vous démo produit", "client": "Marc Dubois", "owner": "Antoine Roy", "date": "Aujourd'hui", "time": "11:00", "duration": "1h30", "status": "planifié", "priority": "high", "summary": "Présentation module Pipeline" },
+    { "id": "a3", "type": "email", "title": "Envoi proposition commerciale", "client": "Aya Benali", "owner": "Léa Martin", "date": "Aujourd'hui", "time": "14:20", "status": "à faire", "priority": "medium" },
+    { "id": "a4", "type": "follow-up", "title": "Relance devis n°2043", "client": "Julien Perrin", "owner": "Chloé Bernard", "date": "2026-07-07", "time": "10:00", "duration": "1 heure", "status": "en retard", "priority": "high" },
+    { "id": "a5", "type": "quote", "title": "Envoi devis renouvellement", "client": "Elena Rossi", "owner": "Antoine Roy", "date": "Hier", "time": "10:15", "status": "terminé", "priority": "medium", "result": "En attente de validation" },
+    { "id": "a6", "type": "note", "title": "Compte-rendu réunion stratégique", "client": "Sophie Laurent", "owner": "Léa Martin", "date": "Il y a 2 j", "time": "18:30", "status": "terminé", "priority": "low" },
+    { "id": "a7", "type": "task", "title": "Préparer contrat annuel", "client": "Marc Dubois", "owner": "Antoine Roy", "date": "Demain", "time": "09:00", "status": "à faire", "priority": "high" },
+    { "id": "a8", "type": "visit", "title": "Visite site client", "client": "Thomas Noël", "owner": "Chloé Bernard", "date": "2026-07-10", "time": "10:00", "duration": "1 heure", "status": "planifié", "priority": "medium" },
+    { "id": "a9", "type": "meeting", "title": "Rendez-vous stratégique", "client": "Sophie Laurent", "owner": "Léa Martin", "date": "2026-07-07", "time": "14:00", "duration": "2 heures", "status": "planifié", "priority": "high" },
+    { "id": "a10", "type": "task", "title": "Standup équipe", "client": "Interne", "owner": "Léa Martin", "date": "2026-07-08", "time": "09:00", "duration": "30 min", "status": "planifié", "priority": "low" },
+    { "id": "a11", "type": "meeting", "title": "Café découverte", "client": "Aya Benali", "owner": "Léa Martin", "date": "2026-07-08", "time": "15:30", "duration": "1 heure", "status": "planifié", "priority": "medium" },
+    { "id": "a12", "type": "call", "title": "Appel Julien Perrin", "client": "Julien Perrin", "owner": "Chloé Bernard", "date": "2026-07-09", "time": "11:00", "duration": "1 heure", "status": "planifié", "priority": "medium" },
+    { "id": "a13", "type": "meeting", "title": "Négociation contrat", "client": "Marc Dubois", "owner": "Antoine Roy", "date": "2026-07-09", "time": "16:00", "duration": "1h30", "status": "planifié", "priority": "high" },
+    { "id": "a14", "type": "follow-up", "title": "Relance Elena Rossi", "client": "Elena Rossi", "owner": "Antoine Roy", "date": "2026-07-10", "time": "14:00", "duration": "30 min", "status": "planifié", "priority": "medium" }
+  ],
+  "deals": [
+    { "id": "d1", "client": "Sophie Laurent", "company": "Atelier Nord", "amount": 82500, "probability": 80, "owner": "Léa Martin", "lastActivity": "Appel il y a 2 h", "nextAction": "Envoyer contrat", "closeDate": "15 juil.", "stage": "Négociation" },
+    { "id": "d2", "client": "Marc Dubois", "company": "Logipro Industries", "amount": 120000, "probability": 65, "owner": "Antoine Roy", "lastActivity": "Démo aujourd'hui", "nextAction": "Préparer proposition", "closeDate": "28 juil.", "stage": "Devis envoyé" },
+    { "id": "d3", "client": "Aya Benali", "company": "Studio Kova", "amount": 18500, "probability": 40, "owner": "Léa Martin", "lastActivity": "Email il y a 3 j", "nextAction": "Relancer", "closeDate": "10 août", "stage": "Qualification" },
+    { "id": "d4", "client": "Julien Perrin", "company": "GreenTech Solutions", "amount": 46200, "probability": 55, "owner": "Chloé Bernard", "lastActivity": "Devis envoyé", "nextAction": "Relance", "closeDate": "22 juil.", "stage": "Premier contact" },
+    { "id": "d5", "client": "Elena Rossi", "company": "Maison Verre", "amount": 9800, "probability": 25, "owner": "Antoine Roy", "lastActivity": "Découverte", "nextAction": "Planifier RDV", "closeDate": "5 août", "stage": "Nouveau lead" },
+    { "id": "d6", "client": "Thomas Noël", "company": "Noël & Associés", "amount": 24000, "probability": 10, "owner": "Chloé Bernard", "lastActivity": "Silence radio", "nextAction": "Réactiver", "closeDate": "—", "stage": "Relance 2" },
+    { "id": "d7", "client": "Nadia Hakim", "company": "Onyx Studio", "amount": 36000, "probability": 100, "owner": "Léa Martin", "lastActivity": "Contrat signé", "nextAction": "Kick-off", "closeDate": "01 juil.", "stage": "Vente gagnée" },
+    { "id": "d8", "client": "Pierre Coste", "company": "Coste Bâtiment", "amount": 15000, "probability": 0, "owner": "Antoine Roy", "lastActivity": "Refus", "nextAction": "Archiver", "closeDate": "—", "stage": "Vente perdue" },
+    { "id": "d9", "client": "Camille Roux", "company": "Roux & Co", "amount": 27500, "probability": 30, "owner": "Léa Martin", "lastActivity": "Nouveau prospect", "nextAction": "Prise de contact", "closeDate": "20 août", "stage": "Nouveau lead" },
+    { "id": "d10", "client": "Hugo Marchand", "company": "Marchand & Fils", "amount": 54000, "probability": 45, "owner": "Antoine Roy", "lastActivity": "RDV confirmé", "nextAction": "Préparer démo", "closeDate": "18 juil.", "stage": "Rendez-vous planifié" },
+    { "id": "d11", "client": "Inès Dupuis", "company": "Nuvem SaaS", "amount": 68000, "probability": 50, "owner": "Chloé Bernard", "lastActivity": "Atelier découverte", "nextAction": "Cadrer besoins", "closeDate": "25 juil.", "stage": "Analyse des besoins" },
+    { "id": "d12", "client": "Rachid Benyoub", "company": "Vertex Data", "amount": 91000, "probability": 60, "owner": "Léa Martin", "lastActivity": "Démo hier", "nextAction": "Envoyer devis", "closeDate": "30 juil.", "stage": "Démonstration" },
+    { "id": "d13", "client": "Sarah Colin", "company": "Colin Legal", "amount": 22000, "probability": 35, "owner": "Antoine Roy", "lastActivity": "Devis envoyé il y a 5 j", "nextAction": "Rappeler", "closeDate": "08 août", "stage": "Relance 1" },
+    { "id": "d14", "client": "Yanis Karim", "company": "Karim Immo", "amount": 48500, "probability": 20, "owner": "Chloé Bernard", "lastActivity": "3e relance envoyée", "nextAction": "Escalader manager", "closeDate": "12 août", "stage": "Relance finale" },
+    { "id": "d15", "client": "Léna Fabre", "company": "Fabre Retail", "amount": 76000, "probability": 95, "owner": "Léa Martin", "lastActivity": "Contrat paraphé", "nextAction": "Signature électronique", "closeDate": "10 juil.", "stage": "Contrat signé" },
+    { "id": "d16", "client": "Paul Ricci", "company": "Ricci Group", "amount": 32000, "probability": 100, "owner": "Karim El Amrani", "lastActivity": "Recommandation", "nextAction": "Programme partenaire", "closeDate": "—", "stage": "Ambassadeur" }
+  ],
+  "projects": [
+    {
+      "id": "p1", "name": "Refonte plateforme e-commerce", "client": "Atelier Nord", "owner": "Léa Martin", "start": "01/06/2025", "end": "30/09/2025", "progress": 75, "status": "En cours",
+      "team": ["LM", "AR", "CB"],
+      "tasks": [
+        { "id": "p1t1", "label": "Cadrage UX", "status": "Terminé", "assignee": "LM", "due": "10/06/2025" },
+        { "id": "p1t2", "label": "Maquettes Figma", "status": "En cours", "assignee": "AR", "due": "20/07/2026" },
+        { "id": "p1t3", "label": "Intégration front", "status": "À faire", "assignee": "CB", "due": "05/08/2026" }
+      ]
+    },
+    {
+      "id": "p1b", "name": "Programme fidélité Atelier Nord", "client": "Atelier Nord", "owner": "Léa Martin", "start": "15/07/2026", "end": "15/11/2026", "progress": 10, "status": "En attente",
+      "team": ["LM", "JF"],
+      "tasks": [
+        { "id": "p1bt1", "label": "Benchmark concurrents", "status": "En cours", "assignee": "JF", "due": "22/07/2026" },
+        { "id": "p1bt2", "label": "Atelier stratégie", "status": "À faire", "assignee": "LM", "due": "01/08/2026" }
+      ]
+    },
+    {
+      "id": "p2", "name": "Déploiement CRM Logipro", "client": "Logipro Industries", "owner": "Antoine Roy", "start": "15/05/2025", "end": "15/08/2025", "progress": 50, "status": "En cours",
+      "team": ["AR", "KE"],
+      "tasks": [
+        { "id": "p2t1", "label": "Import données", "status": "Terminé", "assignee": "KE", "due": "01/06/2025" },
+        { "id": "p2t2", "label": "Formation utilisateurs", "status": "En cours", "assignee": "AR", "due": "18/07/2026" },
+        { "id": "p2t3", "label": "Recette", "status": "En retard", "assignee": "AR", "due": "02/07/2026" }
+      ]
+    },
+    {
+      "id": "p3", "name": "Audit branding Studio Kova", "client": "Studio Kova", "owner": "Léa Martin", "start": "20/06/2025", "end": "20/07/2025", "progress": 25, "status": "En attente",
+      "team": ["LM", "CB"],
+      "tasks": [
+        { "id": "p3t1", "label": "Audit visuel", "status": "En cours", "assignee": "LM", "due": "12/07/2026" },
+        { "id": "p3t2", "label": "Recommandations", "status": "À faire", "assignee": "CB", "due": "19/07/2026" }
+      ]
+    },
+    {
+      "id": "p4", "name": "Migration Cloud GreenTech", "client": "GreenTech Solutions", "owner": "Chloé Bernard", "start": "10/04/2025", "end": "10/07/2025", "progress": 100, "status": "Terminé",
+      "team": ["CB", "KE"],
+      "tasks": [
+        { "id": "p4t1", "label": "Migration prod", "status": "Terminé", "assignee": "KE", "due": "05/07/2025" },
+        { "id": "p4t2", "label": "Documentation", "status": "Terminé", "assignee": "CB", "due": "10/07/2025" }
+      ]
+    },
+    {
+      "id": "p5", "name": "Formation équipes Maison Verre", "client": "Maison Verre", "owner": "Antoine Roy", "start": "01/07/2025", "end": "01/10/2025", "progress": 0, "status": "Suspendu",
+      "team": ["AR"],
+      "tasks": [
+        { "id": "p5t1", "label": "Planifier sessions", "status": "À faire", "assignee": "AR", "due": "20/07/2026" }
+      ]
+    }
+  ],
+  "members": [
+    { "id": "u1", "name": "Adem Eray", "role": "Administrateur", "email": "admin@eray.com", "phone": "+33 6 12 45 78 90", "team": "Direction", "status": "Actif", "initials": "AE", "lastActive": "En ligne" },
+    { "id": "u2", "name": "Sarah Benali", "role": "Manager", "email": "sarah@eray.com", "phone": "+33 6 22 11 84 02", "team": "Direction", "status": "Actif", "initials": "SB", "lastActive": "il y a 5 min" },
+    { "id": "u3", "name": "Yanis Moreau", "role": "Commercial", "email": "yanis@eray.com", "phone": "+33 6 74 09 33 21", "team": "Ventes B2B", "status": "Actif", "initials": "YM", "lastActive": "il y a 1 h" },
+    { "id": "u4", "name": "Claire Dubois", "role": "Commercial", "email": "claire@eray.com", "phone": "+33 6 88 51 07 66", "team": "Ventes B2B", "status": "Actif", "initials": "CD", "lastActive": "il y a 30 min" },
+    { "id": "u5", "name": "Marc Lefevre", "role": "Commercial", "email": "marc@eray.com", "phone": "+33 6 31 78 24 15", "team": "PME", "status": "Désactivé", "initials": "ML", "lastActive": "—" }
+  ],
+  "revenueSeries": [
+    { "m": "Jan", "ca": 42, "po": 68 },
+    { "m": "Fév", "ca": 55, "po": 72 },
+    { "m": "Mar", "ca": 61, "po": 84 },
+    { "m": "Avr", "ca": 72, "po": 92 },
+    { "m": "Mai", "ca": 68, "po": 96 },
+    { "m": "Juin", "ca": 84, "po": 108 },
+    { "m": "Juil", "ca": 92, "po": 118 }
+  ]
+}

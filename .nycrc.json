@@ -1,0 +1,9 @@
+{
+  "reporter": ["text", "text-summary", "html", "lcov"],
+  "report-dir": "coverage/cypress",
+  "all": true,
+  "exclude": ["cypress/**", "coverage/**", "node_modules/**"],
+  "extension": [".js", ".jsx", ".ts", ".tsx"],
+  "sourceMap": true,
+  "instrument": false
+}

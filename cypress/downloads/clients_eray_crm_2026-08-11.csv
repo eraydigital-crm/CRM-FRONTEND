@@ -1,0 +1,3 @@
+﻿"Nom","Entreprise","Rôle","Email","Téléphone","Ville","Secteur","Statut","Priorité","Responsable","Valeur"
+"Mock Prospect One","Alpha Tech","CTO","alpha@test.com","+261340000001","Antananarivo","Tech","prospect","high","Antoine Roy","150000"
+"Mock Client Two","Beta Services","CEO","beta@test.com","+261340000002","Antsirabe","Finance","actif","medium","Léa Martin","450000"
