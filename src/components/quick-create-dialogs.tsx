@@ -27,7 +27,8 @@ import { toast } from "sonner";
 import type { ReactNode, FormEvent } from "react";
 import { useState } from "react";
 import { useCRM } from "@/lib/store";
-import type { Activity, Stage, Client, Project, Deal, ClientEvent } from "@/lib/crm-data";
+import type { Activity, Stage, Client, Project, Deal } from "@/lib/crm-data";
+import { gradientFor, initialsOf } from "@/lib/api/mappers";
 
 type BaseProps = {
   trigger?: ReactNode;
@@ -59,6 +60,60 @@ const selectCls = inputCls;
 const textareaCls =
   "w-full min-h-[80px] rounded-lg border border-input p-3 text-sm focus:border-ring outline-none bg-card";
 
+/**
+ * The API keys every relation by id, so a client (or an owner) can never be a
+ * free-text name here: both pickers list what the backend actually knows.
+ */
+function ClientSelect({ name = "clientId", required = true }: { name?: string; required?: boolean }) {
+  const { clients } = useCRM();
+  return (
+    <select name={name} className={selectCls} required={required} defaultValue="">
+      <option value="" disabled>
+        {clients.length ? "Sélectionnez un client" : "Aucun client — créez-en un d'abord"}
+      </option>
+      {clients.map((c) => (
+        <option key={c.id} value={c.id}>
+          {c.name}{c.company ? ` — ${c.company}` : ""}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function OwnerSelect({ name = "ownerId" }: { name?: string }) {
+  const { members, currentUser } = useCRM();
+  const isManager = currentUser?.role === "admin" || currentUser?.role === "manager";
+  const mine = currentUser ? String(currentUser.id) : "";
+
+  // Only managers and admins may assign someone else (OwnershipVoter).
+  if (!isManager) {
+    return (
+      <>
+        <input type="hidden" name={name} value={mine} />
+        <div className={`${inputCls} flex items-center text-muted-foreground`}>
+          {currentUser?.fullName ?? "—"}
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <select name={name} className={selectCls} defaultValue={mine}>
+      {members
+        .filter((m) => m.status !== "Désactivé")
+        .map((m) => (
+          <option key={m.id} value={m.id}>{m.name}</option>
+        ))}
+    </select>
+  );
+}
+
+/** Reads a "<name>Id" select and returns the matching entity. */
+function pickById<T extends { id: string }>(items: T[], raw: FormDataEntryValue | null): T | undefined {
+  const id = raw?.toString();
+  return id ? items.find((item) => item.id === id) : undefined;
+}
+
 /* -------------------- NEW CLIENT -------------------- */
 export function NewClientDialog(props: BaseProps) {
   const [internalOpen, setInternalOpen] = useState(false);
@@ -69,30 +124,35 @@ export function NewClientDialog(props: BaseProps) {
     props.onOpenChange?.(o);
   };
 
+  const { members, currentUser } = useCRM();
+
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const firstName = fd.get("firstName")?.toString().trim() || "Nouveau";
     const lastName = fd.get("lastName")?.toString().trim() || "Client";
     const fullName = `${firstName} ${lastName}`;
-    
+    const owner = pickById(members, fd.get("ownerId"));
+    const temporaryId = `c_${Date.now()}`;
+
     const newClient: Client = {
-      id: `c_${Date.now()}`,
+      id: temporaryId,
       name: fullName,
-      company: fd.get("company")?.toString() || "Entreprise Inconnue",
-      role: fd.get("role")?.toString() || "Contact",
-      email: fd.get("email")?.toString() || "contact@client.com",
-      phone: fd.get("phone")?.toString() || "+33 6 00 00 00 00",
+      company: fd.get("company")?.toString() || "",
+      role: fd.get("role")?.toString() || "",
+      email: fd.get("email")?.toString() || "",
+      phone: fd.get("phone")?.toString() || "",
       status: (fd.get("status")?.toString() as any) || "prospect",
       priority: (fd.get("priority")?.toString() as any) || "medium",
-      owner: fd.get("owner")?.toString() || "Léa Martin",
-      city: fd.get("address")?.toString() || "Paris",
-      sector: "B2B Services",
+      owner: owner?.name ?? currentUser?.fullName ?? "",
+      ownerId: owner ? Number(owner.id) : currentUser?.id,
+      city: fd.get("address")?.toString() || "",
+      sector: fd.get("sector")?.toString() || "",
       value: Number(fd.get("value")) || 0,
       tags: ["Nouveau"],
-      initials: `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase(),
-      color: "from-blue-500 to-indigo-600",
-      lastContact: "Aujourd'hui"
+      initials: initialsOf(fullName),
+      color: gradientFor(temporaryId),
+      lastContact: "à l'instant",
     };
 
     setClients([newClient, ...clients]);
@@ -121,7 +181,7 @@ export function NewClientDialog(props: BaseProps) {
             <Field label="Entreprise"><input name="company" className={inputCls} placeholder="Ex: TechCorp" required /></Field>
             <Field label="Fonction"><input name="role" className={inputCls} placeholder="Ex : Directeur Informatique" /></Field>
             <Field label="Email"><input name="email" type="email" className={inputCls} placeholder="jean.dupont@techcorp.com" required /></Field>
-            <Field label="Téléphone"><input name="phone" className={inputCls} placeholder="+33 6 12 34 56 78" /></Field>
+            <Field label="Téléphone"><input name="phone" className={inputCls} placeholder="+33 6 12 34 56 78" required /></Field>
             <Field label="Statut">
               <select name="status" className={selectCls} defaultValue="prospect">
                 <option value="prospect">Prospect</option>
@@ -141,7 +201,10 @@ export function NewClientDialog(props: BaseProps) {
               <input name="value" type="number" className={inputCls} placeholder="0" defaultValue="25000" />
             </Field>
             <Field label="Responsable">
-              <input name="owner" className={inputCls} defaultValue="Léa Martin" />
+              <OwnerSelect />
+            </Field>
+            <Field label="Secteur">
+              <input name="sector" className={inputCls} placeholder="Ex : Industrie, E-commerce" />
             </Field>
             <Field label="Adresse / Ville" className="col-span-2">
               <input name="address" className={inputCls} placeholder="Paris, France" />
@@ -168,26 +231,33 @@ export function NewProjectDialog(props: BaseProps) {
   };
   const today = new Date().toISOString().slice(0, 10);
 
+  const { clients, members, currentUser } = useCRM();
+
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const projectName = fd.get("name")?.toString().trim() || "Nouveau projet";
-    const clientName = fd.get("client")?.toString().trim() || "Client général";
+    const client = pickById(clients, fd.get("clientId"));
+    if (!client) {
+      toast.error("Client requis", { description: "Sélectionnez le client du projet." });
+      return;
+    }
+    const owner = pickById(members, fd.get("ownerId"));
 
     const newProject: Project = {
       id: `proj_${Date.now()}`,
       name: projectName,
-      client: clientName,
-      owner: fd.get("owner")?.toString() || "Léa Martin",
+      client: client.name,
+      clientId: Number(client.id),
+      owner: owner?.name ?? currentUser?.fullName ?? "",
+      ownerId: owner ? Number(owner.id) : currentUser?.id,
       start: fd.get("start")?.toString() || today,
-      end: fd.get("end")?.toString() || "2026-12-31",
+      end: fd.get("end")?.toString() || "",
       progress: 0,
       status: (fd.get("status")?.toString() as any) || "En cours",
-      team: ["LM", "AR"],
-      tasks: [
-        { id: `t_${Date.now()}_1`, label: "Cadrage du projet", status: "Terminé", assignee: "LM", due: today },
-        { id: `t_${Date.now()}_2`, label: "Spécifications fonctionnelles", status: "En cours", assignee: "AR", due: "2026-08-20" },
-      ]
+      team: owner ? [owner.initials] : [],
+      teamIds: owner ? [Number(owner.id)] : [],
+      tasks: [],
     };
 
     setProjects([newProject, ...projects]);
@@ -212,10 +282,10 @@ export function NewProjectDialog(props: BaseProps) {
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <Field label="Nom du projet"><input name="name" className={inputCls} required placeholder="Ex : Refonte du portail web" /></Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Client"><input name="client" className={inputCls} placeholder="Société ou client..." required /></Field>
-            <Field label="Chef de projet"><input name="owner" className={inputCls} defaultValue="Léa Martin" /></Field>
+            <Field label="Client"><ClientSelect /></Field>
+            <Field label="Chef de projet"><OwnerSelect /></Field>
             <Field label="Date de début"><input name="start" type="date" className={inputCls} defaultValue={today} /></Field>
-            <Field label="Date de fin estimée"><input name="end" type="date" className={inputCls} defaultValue="2026-12-31" /></Field>
+            <Field label="Date de fin estimée"><input name="end" type="date" className={inputCls} /></Field>
             <Field label="Statut" className="col-span-2">
               <select name="status" className={selectCls} defaultValue="En cours">
                 <option value="En cours">En cours</option>
@@ -251,23 +321,31 @@ export function NewOpportunityDialog(props: BaseProps) {
     props.onOpenChange?.(o);
   };
 
+  const { clients, members, currentUser } = useCRM();
+
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const clientName = fd.get("client")?.toString().trim() || "Nouveau Lead";
-    const companyName = fd.get("company")?.toString().trim() || "Société Inconnue";
-    const amountVal = Number(fd.get("amount")) || 15000;
+    const client = pickById(clients, fd.get("clientId"));
+    if (!client) {
+      toast.error("Client requis", { description: "Sélectionnez le client de l'opportunité." });
+      return;
+    }
+    const owner = pickById(members, fd.get("ownerId"));
+    const amountVal = Number(fd.get("amount")) || 0;
 
     const newDeal: Deal = {
       id: `deal_${Date.now()}`,
-      client: clientName,
-      company: companyName,
+      client: client.name,
+      clientId: Number(client.id),
+      company: client.company,
       amount: amountVal,
       probability: Number(fd.get("probability")) || 50,
-      owner: fd.get("owner")?.toString() || "Léa Martin",
-      lastActivity: "Création opportunité",
-      nextAction: "Rendez-vous de découverte",
-      closeDate: fd.get("closeDate")?.toString() || "15/09/2026",
+      owner: owner?.name ?? currentUser?.fullName ?? "",
+      ownerId: owner ? Number(owner.id) : currentUser?.id,
+      lastActivity: "—",
+      nextAction: fd.get("nextAction")?.toString() || "",
+      closeDate: fd.get("closeDate")?.toString() || "",
       stage: (fd.get("stage")?.toString() as Stage) || "Nouveau lead",
     };
 
@@ -292,18 +370,20 @@ export function NewOpportunityDialog(props: BaseProps) {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Nom du client / contact"><input name="client" className={inputCls} required placeholder="Ex : Sophie Laurent" /></Field>
-            <Field label="Entreprise"><input name="company" className={inputCls} required placeholder="Ex : Acme SAS" /></Field>
+            <Field label="Client" className="col-span-2"><ClientSelect /></Field>
             <Field label="Montant potentiel (MGA)"><input name="amount" type="number" className={inputCls} placeholder="50000" required defaultValue="45000" /></Field>
             <Field label="Probabilité (%)"><input name="probability" type="number" min={0} max={100} className={inputCls} defaultValue={50} /></Field>
-            <Field label="Responsable"><input name="owner" className={inputCls} defaultValue="Léa Martin" /></Field>
+            <Field label="Responsable"><OwnerSelect /></Field>
             <Field label="Étape du pipeline">
               <select name="stage" className={selectCls} defaultValue="Nouveau lead">
                 {stagesList.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </Field>
-            <Field label="Date de clôture prévue" className="col-span-2">
-              <input name="closeDate" className={inputCls} defaultValue="15/09/2026" placeholder="JJ/MM/AAAA" />
+            <Field label="Date de clôture prévue">
+              <input name="closeDate" type="date" className={inputCls} />
+            </Field>
+            <Field label="Prochaine action" className="col-span-2">
+              <input name="nextAction" className={inputCls} placeholder="Ex : Rendez-vous de découverte" />
             </Field>
           </div>
           <DialogFooter>
@@ -326,7 +406,7 @@ export function NewEventDialog(props: BaseProps) {
   };
 
   const [type, setType] = useState("Rendez-vous");
-  const { activities, setActivities, deals, setDeals, clientEvents, setClientEvents } = useCRM();
+  const { activities, setActivities, clients, members, currentUser } = useCRM();
   const today = new Date().toISOString().slice(0, 10);
 
   const [reminderPreset, setReminderPreset] = useState("Aucun");
@@ -345,7 +425,12 @@ export function NewEventDialog(props: BaseProps) {
       "Tâche": "task"
     };
 
-    const clientName = fd.get("client")?.toString().trim() || "Client commercial";
+    const client = pickById(clients, fd.get("clientId"));
+    if (!client) {
+      toast.error("Client requis", { description: "Sélectionnez le client concerné." });
+      return;
+    }
+    const owner = pickById(members, fd.get("ownerId"));
     const titleText = fd.get("title")?.toString().trim() || "Nouvel événement";
     const eventTime = fd.get("time")?.toString() || "10:00";
     const eventDate = fd.get("date")?.toString() || today;
@@ -367,8 +452,10 @@ export function NewEventDialog(props: BaseProps) {
       id: `act_${Date.now()}`,
       type: typeMapping[type] || "meeting",
       title: titleText,
-      client: clientName,
-      owner: "Léa Martin",
+      client: client.name,
+      clientId: Number(client.id),
+      owner: owner?.name ?? currentUser?.fullName ?? "",
+      ownerId: owner ? Number(owner.id) : currentUser?.id,
       date: eventDate,
       time: eventTime,
       duration: fd.get("duration")?.toString() || "1 heure",
@@ -380,23 +467,10 @@ export function NewEventDialog(props: BaseProps) {
 
     setActivities([newAct, ...activities]);
 
-    const newEventItem: ClientEvent = {
-      id: `ce_${Date.now()}`,
-      channel: (typeMapping[type] === "call" ? "call" : typeMapping[type] === "meeting" ? "meeting" : "note") as any,
-      title: titleText,
-      client: clientName,
-      owner: "Léa Martin",
-      date: eventDate,
-      time: eventTime,
-      direction: "upcoming",
-      summary: fd.get("notes")?.toString() || ""
-    };
-    setClientEvents([newEventItem, ...clientEvents]);
-
     props.onAdd?.(newAct);
     setOpen(false);
     toast.success("Événement ajouté au calendrier", {
-      description: `L'événement "${titleText}" avec ${clientName} a été planifié.`
+      description: `L'événement "${titleText}" avec ${client.name} a été planifié.`
     });
   };
 
@@ -437,7 +511,10 @@ export function NewEventDialog(props: BaseProps) {
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Client / Prospect">
-              <input name="client" className={inputCls} placeholder="Nom du client" required />
+              <ClientSelect />
+            </Field>
+            <Field label="Responsable">
+              <OwnerSelect />
             </Field>
             <Field label="Durée">
               <select name="duration" className={selectCls} defaultValue="1 heure">

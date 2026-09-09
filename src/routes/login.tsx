@@ -3,7 +3,21 @@ import { useNavigate, Link } from "react-router";
 import { Eye, EyeOff, Lock, Mail, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import logoUrl from "@/assets/eray.jpg";
-import { members } from "@/lib/crm-data";
+import { authApi } from "@/lib/api/endpoints";
+import { ApiError } from "@/lib/api/http";
+
+/**
+ * Accounts seeded by the backend (CGA-BACKEND/src/DataFixtures/UserFixtures.php).
+ * They all share the same fixture password; marc@eray.com is deliberately
+ * disabled there, so it is not offered here.
+ */
+const SEEDED_PASSWORD = "Demo1234!";
+const SEEDED_ACCOUNTS = [
+  { initials: "AE", label: "Admin", email: "admin@eray.com" },
+  { initials: "SB", label: "Manager", email: "sarah@eray.com" },
+  { initials: "YM", label: "Commercial", email: "yanis@eray.com" },
+  { initials: "CD", label: "Commercial", email: "claire@eray.com" },
+];
 
 export default function Login() {
   const navigate = useNavigate();
@@ -14,16 +28,29 @@ export default function Login() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleForgotPassword = (e: React.MouseEvent) => {
+  const handleForgotPassword = async (e: React.MouseEvent) => {
     e.preventDefault();
-    toast.info("🔐 Fonctionnalité à venir : réinitialisation par email.", {
-      description: "Le système de récupération de mot de passe est en cours de développement.",
-    });
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError("Saisissez votre e-mail, puis cliquez sur \"Mot de passe oublié\".");
+      return;
+    }
+
+    try {
+      await authApi.requestPasswordReset(trimmedEmail);
+      toast.success("E-mail envoyé", {
+        description: "Si un compte existe pour cette adresse, un lien de réinitialisation vient d'être envoyé.",
+      });
+    } catch (err) {
+      toast.error("Demande impossible", {
+        description: err instanceof Error ? err.message : "Réessayez plus tard.",
+      });
+    }
   };
 
   const handleQuickLogin = (demoEmail: string) => {
     setEmail(demoEmail);
-    setPassword("password123");
+    setPassword(SEEDED_PASSWORD);
     toast.success("Champs pré-remplis !", {
       description: `Identifiants pour ${demoEmail} ajoutés. Cliquez sur Se connecter.`,
       duration: 2000,
@@ -45,78 +72,22 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      let responseData: { token: string; role: string } | null = null;
-
-      // Call simulated or actual api endpoint
-      try {
-        const response = await fetch("/api/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: trimmedEmail,
-            password: trimmedPassword,
-            remember: remember,
-          }),
-        });
-
-        if (response.ok) {
-          responseData = await response.json();
-        }
-      } catch (fetchErr) {
-        console.warn("API Server not responding, falling back to local credentials authentication.", fetchErr);
-      }
-
-      // Local auth fallback
-      if (!responseData) {
-        const member = members.find(
-          (m) => m.email.toLowerCase() === trimmedEmail.toLowerCase()
-        );
-
-        if (member) {
-          if (member.status === "Désactivé") {
-            throw new Error("Ce compte est désactivé. Veuillez contacter votre administrateur.");
-          }
-
-          let mappedRole = "commercial";
-          if (member.role === "Administrateur") mappedRole = "admin";
-          else if (member.role === "Manager") mappedRole = "manager";
-
-          responseData = {
-            token: `mock-token-${member.id}-${Date.now()}`,
-            role: mappedRole,
-          };
-        }
-      }
-      if (!responseData) {
-        throw new Error("Identifiants incorrects. Veuillez réessayer.");
-      }
-
-      const { token, role } = responseData;
-      const matchedMember = members.find((m) => m.email.toLowerCase() === trimmedEmail.toLowerCase());
-      const displayName = matchedMember ? matchedMember.name : "Utilisateur";
-
-      if (remember) {
-        localStorage.setItem("token", token);
-        localStorage.setItem("role", role);
-        localStorage.setItem("name", displayName);
-      } else {
-        sessionStorage.setItem("token", token);
-        sessionStorage.setItem("role", role);
-        sessionStorage.setItem("name", displayName);
-      }
+      const { user } = await authApi.login(trimmedEmail, trimmedPassword, remember);
 
       toast.success("Connexion réussie !", {
-        description: `Bienvenue, ${displayName} !`,
+        description: `Bienvenue, ${user.fullName} !`,
       });
 
       navigate("/");
-    } catch (err: any) {
-      setError(err.message || "Une erreur est survenue. Veuillez réessayer.");
-      toast.error("Erreur de connexion", {
-        description: err.message || "Identifiants invalides.",
-      });
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.firstFieldError ?? err.message
+          : err instanceof Error
+            ? err.message
+            : "Une erreur est survenue. Veuillez réessayer.";
+      setError(message);
+      toast.error("Erreur de connexion", { description: message });
     } finally {
       setIsLoading(false);
     }
@@ -250,22 +221,19 @@ export default function Login() {
               Comptes de test (Sélection rapide)
             </h2>
             <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("admin@eray.com")}
-                className="p-2.5 border border-border/50 dark:border-border/10 rounded-xl hover:bg-muted/50 text-left transition-all text-xs"
-              >
-                <div className="font-semibold text-foreground truncate">AE (Admin)</div>
-                <div className="text-[10px] text-muted-foreground truncate">admin@eray.com</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("yanis@eray.com")}
-                className="p-2.5 border border-border/50 dark:border-border/10 rounded-xl hover:bg-muted/50 text-left transition-all text-xs"
-              >
-                <div className="font-semibold text-foreground truncate">YM (Commercial)</div>
-                <div className="text-[10px] text-muted-foreground truncate">yanis@eray.com</div>
-              </button>
+              {SEEDED_ACCOUNTS.map((account) => (
+                <button
+                  key={account.email}
+                  type="button"
+                  onClick={() => handleQuickLogin(account.email)}
+                  className="p-2.5 border border-border/50 dark:border-border/10 rounded-xl hover:bg-muted/50 text-left transition-all text-xs"
+                >
+                  <div className="font-semibold text-foreground truncate">
+                    {account.initials} ({account.label})
+                  </div>
+                  <div className="text-[10px] text-muted-foreground truncate">{account.email}</div>
+                </button>
+              ))}
             </div>
           </div>
 

@@ -7,6 +7,10 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { authApi } from "@/lib/api/endpoints";
+import { useCRM } from "@/lib/store";
 
 const sections = [
   { id: "profile", label: "Profil", icon: User },
@@ -75,32 +79,92 @@ function Card({ title, desc, children }: { title: string; desc?: string; childre
 }
 
 function ProfileSection() {
+  const { currentUser } = useCRM();
+  const queryClient = useQueryClient();
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [team, setTeam] = useState("");
+
+  // Refill the form whenever /api/me resolves (or is refreshed).
+  useEffect(() => {
+    setFirstName(currentUser?.firstName ?? "");
+    setLastName(currentUser?.lastName ?? "");
+    setPhone(currentUser?.phone ?? "");
+    setTeam(currentUser?.team ?? "");
+  }, [currentUser]);
+
+  const save = useMutation({
+    mutationFn: () => authApi.updateMe({ firstName, lastName, phone: phone || null, team: team || null }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["me"] });
+      void queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success("Profil mis à jour");
+    },
+    onError: (error: unknown) => {
+      toast.error("Enregistrement impossible", {
+        description: error instanceof Error ? error.message : "Réessayez plus tard.",
+      });
+    },
+  });
+
+  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || "—";
+
   return (
     <>
       <Card title="Profil utilisateur" desc="Ces informations sont visibles par les membres de votre équipe.">
         <div className="flex items-center gap-4">
           <Avatar className="h-20 w-20">
-            <AvatarFallback className="bg-gradient-to-br from-primary to-violet text-white text-xl font-bold">LM</AvatarFallback>
+            <AvatarFallback className="bg-gradient-to-br from-primary to-violet text-white text-xl font-bold">{initials}</AvatarFallback>
           </Avatar>
           <div>
-            <Button variant="outline" size="sm">Changer la photo</Button>
-            <p className="text-[11px] text-muted-foreground mt-1.5">JPG, PNG • 2 Mo max</p>
+            <p className="text-sm font-semibold">{currentUser?.fullName ?? "—"}</p>
+            <p className="text-[11px] text-muted-foreground mt-1.5">{currentUser?.email ?? ""}</p>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-          <FormField label="Prénom" value="Léa" />
-          <FormField label="Nom" value="Martin" />
-          <FormField label="Email professionnel" value="lea.martin@eray.com" />
-          <FormField label="Téléphone" value="+33 6 12 34 56 78" />
-          <FormField label="Poste" value="Manager Ventes B2B" />
-          <FormField label="Fuseau horaire" value="Europe/Paris (UTC+2)" />
+          <EditableField label="Prénom" value={firstName} onChange={setFirstName} />
+          <EditableField label="Nom" value={lastName} onChange={setLastName} />
+          <FormField label="Email professionnel" value={currentUser?.email ?? ""} />
+          <EditableField label="Téléphone" value={phone} onChange={setPhone} />
+          <EditableField label="Équipe" value={team} onChange={setTeam} />
         </div>
         <div className="flex justify-end gap-2 mt-6">
-          <Button variant="outline">Annuler</Button>
-          <Button className="gradient-brand text-white border-0">Enregistrer</Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setFirstName(currentUser?.firstName ?? "");
+              setLastName(currentUser?.lastName ?? "");
+              setPhone(currentUser?.phone ?? "");
+              setTeam(currentUser?.team ?? "");
+            }}
+          >
+            Annuler
+          </Button>
+          <Button
+            className="gradient-brand text-white border-0"
+            disabled={save.isPending}
+            onClick={() => save.mutate()}
+          >
+            {save.isPending ? "Enregistrement…" : "Enregistrer"}
+          </Button>
         </div>
       </Card>
     </>
+  );
+}
+
+function EditableField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <label className="text-xs font-semibold uppercase text-muted-foreground">{label}</label>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1.5 w-full h-10 rounded-lg border border-input px-3 text-sm outline-none focus:border-ring bg-card"
+      />
+    </div>
   );
 }
 

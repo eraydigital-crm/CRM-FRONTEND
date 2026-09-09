@@ -3,12 +3,11 @@ import { useNavigate, Link } from "react-router";
 import { Eye, EyeOff, Lock, Mail, ShieldAlert, User, Briefcase, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import logoUrl from "@/assets/eray.jpg";
-import { useCRM } from "@/lib/store";
-import { Member } from "@/lib/crm-data";
+import { authApi } from "@/lib/api/endpoints";
+import { ApiError } from "@/lib/api/http";
 
 export default function Signup() {
   const navigate = useNavigate();
-  const { members, setMembers } = useCRM();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -89,38 +88,19 @@ export default function Signup() {
     setIsLoading(true);
 
     try {
-      // Check if email already exists
-      const existingUser = members.find((m) => m.email.toLowerCase() === trimmedEmail.toLowerCase());
-      if (existingUser) {
-        throw new Error("Cette adresse email est déjà enregistrée dans le système.");
-      }
-
-      // Simulate a network response
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-
-      // Map French display role
-      let frenchRole: Member["role"] = "Commercial";
-      if (role === "admin") frenchRole = "Administrateur";
-      else if (role === "manager") frenchRole = "Manager";
-
-      // Register new user dynamically into the store context
-      const newMember: Member = {
-        id: `u-${Date.now()}`,
-        name: `${trimmedFirstName} ${trimmedLastName}`,
-        role: frenchRole,
+      // Public registration always creates a COMMERCIAL account: the backend
+      // ignores any elevated role, only an admin can promote a member.
+      await authApi.register({
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
         email: trimmedEmail,
-        phone: "+33 6 00 00 00 00",
-        team: trimmedCompany || "Non assigné",
-        status: "Actif",
-        initials: `${trimmedFirstName.substring(0, 1)}${trimmedLastName.substring(0, 1)}`.toUpperCase(),
-        lastActive: "Jamais",
-      };
+        password: trimmedPassword,
+        company: trimmedCompany || null,
+      });
 
-      setMembers((prevMembers) => [newMember, ...prevMembers]);
-
-      setSuccess("Compte créé avec succès ! Redirection vers la page de connexion…");
+      setSuccess("Compte créé avec succès ! Vérifiez votre boîte mail, puis connectez-vous.");
       toast.success("Compte créé !", {
-        description: `Bienvenue à ${newMember.name}. Vous pouvez maintenant vous connecter.`,
+        description: `Un e-mail de confirmation a été envoyé à ${trimmedEmail}.`,
       });
 
       // Redirect to login screen after 1.8 seconds
@@ -128,11 +108,15 @@ export default function Signup() {
         navigate("/login");
       }, 1800);
 
-    } catch (err: any) {
-      setError(err.message || "Une erreur est survenue lors de l'inscription.");
-      toast.error("Inscription impossible", {
-        description: err.message || "Veuillez vérifier les informations fournies.",
-      });
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.firstFieldError ?? err.message
+          : err instanceof Error
+            ? err.message
+            : "Une erreur est survenue lors de l'inscription.";
+      setError(message);
+      toast.error("Inscription impossible", { description: message });
       setIsLoading(false);
     }
   };
@@ -277,6 +261,9 @@ export default function Signup() {
                 <option value="manager">Manager</option>
                 <option value="admin">Administrateur</option>
               </select>
+              <p className="text-[11px] text-muted-foreground pl-1">
+                Tout nouveau compte démarre en Commercial : un administrateur ajuste le rôle ensuite.
+              </p>
             </div>
 
             <div className="space-y-1.5">

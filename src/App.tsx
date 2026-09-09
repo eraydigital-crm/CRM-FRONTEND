@@ -5,7 +5,7 @@ import Login from "./routes/login.tsx";
 import Signup from "./routes/signup.tsx";
 import Dashboard from "./routes/_app.index.tsx";
 import Clients from "./routes/_app.clients.tsx";
-import ClientDetail, { clientLoader } from "./routes/_app.clients.$id.tsx";
+import ClientDetail from "./routes/_app.clients.$id.tsx";
 import Activities from "./routes/_app.activities.tsx";
 import Calendar from "./routes/_app.calendar.tsx";
 import Pipeline from "./routes/_app.pipeline.tsx";
@@ -40,7 +40,6 @@ const router = createBrowserRouter([
           {
             path: "clients/:id",
             element: <ClientDetail />,
-            loader: clientLoader,
           },
           {
             path: "activities",

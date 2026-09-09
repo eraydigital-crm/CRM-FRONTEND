@@ -19,6 +19,8 @@ import {
   NewEventDialog,
 } from "@/components/quick-create-dialogs";
 import { NewActivityDialog } from "@/components/new-activity-dialog";
+import { authApi } from "@/lib/api/endpoints";
+import { useCRM } from "@/lib/store";
 
 const Route = {
   useSearch: (): { q?: string } => {
@@ -59,27 +61,21 @@ export function AppTopbar({ onMobileMenuClick }: AppTopbarProps) {
     return () => window.clearTimeout(timeout);
   }, [searchTerm, setSearch]);
 
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("role");
+  const { currentUser } = useCRM();
+
+  const handleLogout = useCallback(async () => {
+    // Clears the HttpOnly cookie server-side, then the local token.
+    await authApi.logout().catch(() => undefined);
     navigate("/login");
   }, [navigate]);
 
-  const [userName, setUserName] = useState("Léa Martin");
-  const [userRole, setUserRole] = useState("Manager Ventes");
-
-  useEffect(() => {
-    const name = localStorage.getItem("name") || sessionStorage.getItem("name");
-    const role = localStorage.getItem("role") || sessionStorage.getItem("role");
-    if (name) setUserName(name);
-    if (role) {
-      if (role === "admin") setUserRole("Administrateur");
-      else if (role === "manager") setUserRole("Manager");
-      else setUserRole("Commercial");
-    }
-  }, []);
+  const userName = currentUser?.fullName ?? "…";
+  const userRole =
+    currentUser?.role === "admin"
+      ? "Administrateur"
+      : currentUser?.role === "manager"
+        ? "Manager"
+        : "Commercial";
 
   const [action, setAction] = useState<QuickAction>(null);
   const [theme, setTheme] = useState(() => {

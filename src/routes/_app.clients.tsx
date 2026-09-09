@@ -23,7 +23,6 @@ import {
   Activity,
   X,
 } from "lucide-react";
-import { projectsForCompany, clientHistorySummary } from "@/lib/crm-data";
 import { useCRM } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -67,7 +66,7 @@ const TABLE_ROW_HEIGHT = 76;
 
 export default function ClientsPage() {
   usePageMeta("Clients — Eray CRM", "Gérez vos clients et prospects avec filtres avancés.");
-  const { clients: clientList, setClients: setClientList } = useCRM();
+  const { clients: clientList, setClients: setClientList, projectsForCompany, clientHistorySummary } = useCRM();
   const [view, setView] = useState<"table" | "cards">("table");
   const [query, setQuery] = useState("");
   const [selectedClient, setSelectedClient] = useState<any>(null);
@@ -730,6 +729,7 @@ function ClientDetailsModal({
   onClose: () => void;
   onEdit: () => void;
 }) {
+  const { projectsForCompany, clientHistorySummary } = useCRM();
   const projs = projectsForCompany(client.company);
   const hist = clientHistorySummary(client.name);
 

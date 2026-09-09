@@ -1,4 +1,4 @@
-import { Link, useLoaderData } from "react-router";
+import { Link, useParams } from "react-router";
 import {
   ArrowLeft,
   Phone,
@@ -21,7 +21,6 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useState } from "react";
-import { clients as staticClients, projectForCompany, projectsForCompany, eventsForClient } from "@/lib/crm-data";
 import { useCRM } from "@/lib/store";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -30,24 +29,36 @@ import { ActivityIcon, StatusBadge, PriorityDot } from "@/components/crm-atoms";
 import { NewActivityDialog } from "@/components/new-activity-dialog";
 import { usePageMeta } from "@/hooks/use-page-meta";
 
-export function clientLoader({ params }: { params: any }) {
-  const client = staticClients.find((c) => c.id === params.id);
-  if (!client) {
-    throw new Response("Client introuvable", { status: 404 });
-  }
-  return { client };
-}
-
 export default function ClientDetail() {
-  const { client: loaderClient } = useLoaderData() as { client: typeof staticClients[number] };
+  const { id } = useParams();
+  const {
+    clients: allClients,
+    activities,
+    isLoading,
+    projectForCompany,
+    projectsForCompany,
+    eventsForClient,
+  } = useCRM();
+  const client = allClients.find((c) => c.id === id);
 
   usePageMeta(
-    loaderClient ? `${loaderClient.name} — Eray CRM` : "Client — Eray CRM",
-    loaderClient ? `Fiche complète de ${loaderClient.name} chez ${loaderClient.company}.` : "Fiche client"
+    client ? `${client.name} — Eray CRM` : "Client — Eray CRM",
+    client ? `Fiche complète de ${client.name} chez ${client.company}.` : "Fiche client"
   );
-  const { clients: allClients, activities } = useCRM();
-  // Use live data from the store if available, fallback to loader
-  const client = allClients.find(c => c.id === loaderClient.id) || loaderClient;
+
+  if (!client) {
+    return (
+      <div className="card-elegant p-10 text-center">
+        <p className="text-sm text-muted-foreground">
+          {isLoading ? "Chargement de la fiche client…" : "Ce client est introuvable ou vous n'y avez pas accès."}
+        </p>
+        <Link to="/clients" className="text-sm text-primary font-semibold mt-3 inline-block">
+          Retour aux clients
+        </Link>
+      </div>
+    );
+  }
+
   const project = projectForCompany(client.company);
   const clientProjects = projectsForCompany(client.company);
   const { past: pastEvents, upcoming: upcomingEvents } = eventsForClient(client.name);

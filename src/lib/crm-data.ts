@@ -1,4 +1,14 @@
-import seedData from "@/data/crm-seed.json";
+/**
+ * Shapes used by every screen of the CRM.
+ *
+ * These are the *UI* types: they carry display-ready strings (French labels,
+ * initials, avatar gradients) and are produced from the API DTOs in
+ * `@/lib/api/mappers`. Each one also keeps the numeric backend ids it came
+ * from (`ownerId`, `clientId`, ...) so it can be turned back into a payload.
+ *
+ * The data itself no longer lives here - it comes from the API through
+ * `@/lib/store`.
+ */
 
 export type Priority = "low" | "medium" | "high";
 export type ClientStatus = "prospect" | "actif" | "inactif" | "vip";
@@ -13,6 +23,7 @@ export type Client = {
   city: string;
   sector: string;
   owner: string;
+  ownerId?: number;
   status: ClientStatus;
   priority: Priority;
   tags: string[];
@@ -22,17 +33,16 @@ export type Client = {
   color: string;
 };
 
-export const clients = seedData.clients as Client[];
-export const kpis = seedData.kpis;
-
 export type Activity = {
   id: string;
   type: "call" | "meeting" | "email" | "quote" | "contract" | "visit" | "note" | "follow-up" | "task" | "whatsapp";
   title: string;
   client: string;
+  clientId?: number;
   owner: string;
-  date: string;
-  time: string;
+  ownerId?: number;
+  date: string; // ISO day, ex. "2026-07-08"
+  time: string; // "14:30"
   duration?: string;
   status: "planifié" | "terminé" | "en retard" | "à faire";
   priority: Priority;
@@ -43,44 +53,18 @@ export type Activity = {
 };
 
 export type HistoryChannel = "call" | "email" | "whatsapp" | "meeting" | "visit" | "note";
+
 export type ClientEvent = {
   id: string;
   channel: HistoryChannel;
   title: string;
   client: string;
   owner: string;
-  date: string; // ex. "08/07/2026"
-  time: string; // ex. "14:30"
+  date: string;
+  time: string;
   direction: "past" | "upcoming";
   summary?: string;
 };
-
-export const clientEvents = seedData.clientEvents as ClientEvent[];
-
-export function eventsForClient(name: string) {
-  const list = clientEvents.filter((e) => e.client === name);
-  return {
-    past: list.filter((e) => e.direction === "past"),
-    upcoming: list.filter((e) => e.direction === "upcoming"),
-    all: list,
-  };
-}
-
-export function clientHistorySummary(name: string) {
-  const { past, upcoming } = eventsForClient(name);
-  return {
-    lastChannel: past[0]?.channel,
-    lastLabel: past[0]?.title,
-    lastDate: past[0] ? `${past[0].date} ${past[0].time}` : "—",
-    nextChannel: upcoming[0]?.channel,
-    nextLabel: upcoming[0]?.title,
-    nextDate: upcoming[0] ? `${upcoming[0].date} ${upcoming[0].time}` : "—",
-    totalPast: past.length,
-    totalUpcoming: upcoming.length,
-  };
-}
-
-export const activities = seedData.activities as Activity[];
 
 export type Stage =
   | "Nouveau lead"
@@ -98,21 +82,6 @@ export type Stage =
   | "Vente gagnée"
   | "Vente perdue"
   | "Ambassadeur";
-
-export type Deal = {
-  id: string;
-  client: string;
-  company: string;
-  amount: number;
-  probability: number;
-  owner: string;
-  lastActivity: string;
-  nextAction: string;
-  closeDate: string;
-  stage: Stage;
-};
-
-export const deals = seedData.deals as Deal[];
 
 export const stages: Stage[] = [
   "Nouveau lead",
@@ -132,34 +101,53 @@ export const stages: Stage[] = [
   "Ambassadeur",
 ];
 
+/** Stages the backend counts as won (Entity/Enum/OpportunityStage::isWon). */
+export const wonStages: Stage[] = ["Contrat signé", "Vente gagnée", "Ambassadeur"];
+export const lostStages: Stage[] = ["Vente perdue"];
+
+export type Deal = {
+  id: string;
+  client: string;
+  clientId?: number;
+  company: string;
+  amount: number;
+  probability: number;
+  owner: string;
+  ownerId?: number;
+  lastActivity: string;
+  nextAction: string;
+  closeDate: string;
+  stage: Stage;
+};
+
 export type TaskStatus = "À faire" | "En cours" | "Terminé" | "En retard";
-export type ProjectTask = { id: string; label: string; status: TaskStatus; assignee: string; due: string };
+
+export type ProjectTask = {
+  id: string;
+  label: string;
+  status: TaskStatus;
+  assignee: string; // initials
+  assigneeId?: number;
+  due: string;
+  priority?: Priority;
+  description?: string;
+};
 
 export type Project = {
   id: string;
   name: string;
   client: string;
+  clientId?: number;
   owner: string;
+  ownerId?: number;
   start: string;
   end: string;
   progress: number;
   status: "En cours" | "En attente" | "Suspendu" | "Terminé";
   team: string[]; // initials
+  teamIds?: number[];
   tasks: ProjectTask[];
 };
-
-export const projects = seedData.projects as Project[];
-
-export function projectsForCompany(company: string): Project[] {
-  const c = company.toLowerCase();
-  return projects.filter(
-    (p) => c.includes(p.client.toLowerCase()) || p.client.toLowerCase().includes(c),
-  );
-}
-
-export function projectForCompany(company: string): Project | undefined {
-  return projectsForCompany(company)[0];
-}
 
 export type Member = {
   id: string;
@@ -171,7 +159,45 @@ export type Member = {
   status: "Actif" | "Invité" | "Désactivé";
   initials: string;
   lastActive: string;
+  photo?: string;
+  firstName?: string;
+  lastName?: string;
 };
 
-export const members = seedData.members as Member[];
-export const revenueSeries = seedData.revenueSeries;
+/* -------------------- pure helpers -------------------- */
+/* The store (`@/lib/store`) exposes these already bound to the live data. */
+
+export function eventsForClient(events: ClientEvent[], name: string) {
+  const list = events.filter((e) => e.client === name);
+  return {
+    past: list.filter((e) => e.direction === "past"),
+    upcoming: list.filter((e) => e.direction === "upcoming"),
+    all: list,
+  };
+}
+
+export function clientHistorySummary(events: ClientEvent[], name: string) {
+  const { past, upcoming } = eventsForClient(events, name);
+  return {
+    lastChannel: past[0]?.channel,
+    lastLabel: past[0]?.title,
+    lastDate: past[0] ? `${past[0].date} ${past[0].time}` : "—",
+    nextChannel: upcoming[0]?.channel,
+    nextLabel: upcoming[0]?.title,
+    nextDate: upcoming[0] ? `${upcoming[0].date} ${upcoming[0].time}` : "—",
+    totalPast: past.length,
+    totalUpcoming: upcoming.length,
+  };
+}
+
+export function projectsForCompany(projects: Project[], company: string): Project[] {
+  const needle = (company || "").toLowerCase();
+  if (!needle) return [];
+  return projects.filter(
+    (p) => needle.includes(p.client.toLowerCase()) || p.client.toLowerCase().includes(needle),
+  );
+}
+
+export function projectForCompany(projects: Project[], company: string): Project | undefined {
+  return projectsForCompany(projects, company)[0];
+}

@@ -158,7 +158,7 @@ export default function ActivitiesPage() {
   usePageMeta("Activités — Eray CRM", "Suivez toutes les activités commerciales sur une timeline.");
 
   const parentRef = useRef<HTMLDivElement>(null);
-  const { activities: activityList, setActivities: setActivityList } = useCRM();
+  const { activities: activityList, setActivities: setActivityList, currentUser: sessionUser } = useCRM();
 
   const [dateFilter, setDateFilter] = useState<DateFilter>("Toutes dates");
   const [customDate, setCustomDate] = useState<string>("");
@@ -171,10 +171,13 @@ export default function ActivitiesPage() {
   const [selectedPriority, setSelectedPriority] = useState<string>("");
   const [selectedOwner, setSelectedOwner] = useState<string>("");
   const [activeSmartFilter, setActiveSmartFilter] = useState<"none" | "overdue" | "blocked" | "soon">("none");
-  const [currentUser, setCurrentUser] = useState<{ name: string; role: "manager" | "commercial" }>({
-    name: "Antoine Roy",
-    role: "commercial",
-  });
+  // The signed-in user, straight from /api/me - the API scopes the data anyway.
+  const currentUser = {
+    name: sessionUser?.fullName ?? "—",
+    role: (sessionUser?.role === "admin" || sessionUser?.role === "manager" ? "manager" : "commercial") as
+      | "manager"
+      | "commercial",
+  };
   const [tick, setTick] = useState(0);
   const [visibleStage, setVisibleStage] = useState<"today_tomorrow" | "this_week" | "all">("today_tomorrow");
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -238,97 +241,6 @@ export default function ActivitiesPage() {
     }, 30000);
     return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    try {
-      const channel = new BroadcastChannel("eray_crm_activities_sync");
-      channel.onmessage = (event) => {
-        if (event.data?.type === "UPDATE_ACTIVITIES") {
-          setActivityList(event.data.data);
-          toast.info("Mise à jour synchronisée", {
-            description: "Les activités ont été mises à jour par un collaborateur (autre onglet).",
-          });
-        }
-      };
-      return () => channel.close();
-    } catch (e) {
-      console.warn("BroadcastChannel non supporté sur ce navigateur.", e);
-    }
-  }, [setActivityList]);
-
-  const syncActivities = useCallback((newActivities: Activity[]) => {
-    try {
-      const channel = new BroadcastChannel("eray_crm_activities_sync");
-      channel.postMessage({ type: "UPDATE_ACTIVITIES", data: newActivities });
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
-
-  useEffect(() => {
-    const mockNames = ["Antoine Roy", "Chloé Bernard", "Léa Martin"];
-    const mockClients = ["Sophie Laurent", "Marc Dubois", "Elena Rossi", "Julien Perrin"];
-    const mockTitles = [
-      { type: "call", title: "Appel de qualification" },
-      { type: "meeting", title: "RDV démo produit" },
-      { type: "email", title: "Envoi proposition commerciale" },
-      { type: "task", title: "Préparer contrat annuel" },
-    ];
-
-    const interval = setInterval(() => {
-      const isNew = Math.random() > 0.4;
-      const collaborator = mockNames[Math.floor(Math.random() * mockNames.length)];
-
-      if (isNew) {
-        const client = mockClients[Math.floor(Math.random() * mockClients.length)];
-        const titleObj = mockTitles[Math.floor(Math.random() * mockTitles.length)];
-        const newAct: any = {
-          id: `mock_act_${Date.now()}`,
-          type: titleObj.type,
-          title: titleObj.title,
-          client: client,
-          owner: collaborator,
-          date: "Aujourd'hui",
-          time: "15:00",
-          status: "à faire",
-          priority: "medium",
-          summary: `Activité générée automatiquement par ${collaborator}`,
-          blocked: Math.random() > 0.8,
-        };
-
-        setActivityList((prev) => {
-          const updated = [newAct, ...prev];
-          syncActivities(updated);
-          return updated;
-        });
-
-        toast.info("Activité en direct", {
-          description: `${collaborator} a planifié : "${titleObj.title}" avec ${client}`,
-        });
-      } else {
-        setActivityList((prev) => {
-          const incomplete = prev.filter((a) => a.status !== "terminé");
-          if (incomplete.length === 0) return prev;
-
-          const target = incomplete[Math.floor(Math.random() * incomplete.length)];
-          const updated = prev.map((a) =>
-            a.id === target.id
-              ? { ...a, status: "terminé" as const, result: `Terminé par ${collaborator}` }
-              : a
-          );
-          syncActivities(updated);
-
-          toast.info("Activité complétée", {
-            description: `${collaborator} a marqué "${target.title}" comme terminée`,
-          });
-
-          return updated;
-        });
-      }
-    }, 45000);
-
-    return () => clearInterval(interval);
-  }, [setActivityList, syncActivities]);
 
   const canEditActivity = (activity: any) => {
     return currentUser.role === "manager" || activity.owner === currentUser.name;
@@ -489,7 +401,6 @@ export default function ActivitiesPage() {
     }
     const updated = activityList.filter((a) => a.id !== id);
     setActivityList(updated);
-    syncActivities(updated);
     toast.success("Activité supprimée");
   };
 
@@ -518,7 +429,6 @@ export default function ActivitiesPage() {
 
       const updated = activityList.map((a) => (a.id === selectedAct.id ? actToSave : a));
       setActivityList(updated);
-      syncActivities(updated);
       setDialogType(null);
       setSelectedAct(null);
       toast.success("Activité modifiée");
@@ -538,7 +448,6 @@ export default function ActivitiesPage() {
       a.id === id ? { ...a, status: newStatus, result: newStatus === "terminé" ? "Complété" : undefined } : a
     );
     setActivityList(updated);
-    syncActivities(updated);
     toast.success(`Statut mis à jour : ${newStatus}`);
     if (newStatus === "terminé") {
       setTimeout(() => {
@@ -577,7 +486,6 @@ export default function ActivitiesPage() {
 
     const updated = activityList.map((a) => (a.id === id ? updatedAct : a));
     setActivityList(updated);
-    syncActivities(updated);
     toast.success("Activité mise à jour avec succès");
   };
 
@@ -599,10 +507,9 @@ export default function ActivitiesPage() {
     await new Promise((resolve) => setTimeout(resolve, 600));
     const updated = activityList.map((a) => (a.id === id ? { ...a, [field]: val } : a));
     setActivityList(updated);
-    syncActivities(updated);
     setSavingField(null);
     toast.success("Modification enregistrée", {
-      description: "Le champ a été mis à jour via API PATCH.",
+      description: "Le champ a été enregistré.",
     });
   };
 
@@ -665,9 +572,7 @@ export default function ActivitiesPage() {
       summary: workflowNotes,
     };
 
-    const updated = [newAct, ...activityList];
-    setActivityList(updated);
-    syncActivities(updated);
+    setActivityList([newAct, ...activityList]);
 
     toast.success("Chaînage d'activité réussi", {
       description: `L'activité "${workflowTitle}" a été insérée au sommet de la timeline.`,
@@ -696,20 +601,9 @@ export default function ActivitiesPage() {
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2 bg-card border border-border px-3 py-1.5 rounded-lg shadow-sm">
             <UserIconRole user={currentUser} />
-            <select
-              value={currentUser.name}
-              onChange={(e) => {
-                const name = e.target.value;
-                const role = name === "Léa Martin" ? "manager" : "commercial";
-                setCurrentUser({ name, role });
-                toast.success(`Utilisateur actif modifié : ${name} (${role})`);
-              }}
-              className="text-xs font-semibold bg-transparent border-0 outline-none text-foreground cursor-pointer focus:ring-0"
-            >
-              <option value="Antoine Roy">Antoine Roy (Commercial)</option>
-              <option value="Léa Martin">Léa Martin (Manager)</option>
-              <option value="Chloé Bernard">Chloé Bernard (Commercial)</option>
-            </select>
+            <span className="text-xs font-semibold text-foreground">
+              {currentUser.name} ({currentUser.role === "manager" ? "Manager" : "Commercial"})
+            </span>
           </div>
           <NewActivityDialog />
         </div>

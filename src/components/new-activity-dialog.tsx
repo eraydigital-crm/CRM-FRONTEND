@@ -40,7 +40,7 @@ export function NewActivityDialog({ trigger, defaultClient, open, onOpenChange, 
   const today = new Date().toISOString().slice(0, 10);
   const [internalOpen, setInternalOpen] = useState(false);
   const [type, setType] = useState("Appel");
-  const { activities, setActivities, deals, setDeals } = useCRM();
+  const { activities, setActivities, clients, members, currentUser } = useCRM();
 
   const [reminderPreset, setReminderPreset] = useState("Aucun");
   const [customVal, setCustomVal] = useState("15");
@@ -77,12 +77,23 @@ export function NewActivityDialog({ trigger, defaultClient, open, onOpenChange, 
       reminderText = `${customVal} ${unitLabel} avant (${channelLabels})`;
     }
 
+    const clientId = fd.get("clientId")?.toString();
+    const client = clients.find((c) => c.id === clientId);
+    if (!client) {
+      toast.error("Client requis", { description: "Sélectionnez le client concerné." });
+      return;
+    }
+    const ownerId = fd.get("ownerId")?.toString();
+    const owner = members.find((m) => m.id === ownerId);
+
     const newAct: Activity = {
       id: `act_${Date.now()}`,
       type: typeMapping[type] || "call",
       title: fd.get("title")?.toString() || "Nouvelle activité",
-      client: fd.get("client")?.toString() || "Client inconnu",
-      owner: fd.get("owner")?.toString() || "Léa Martin",
+      client: client.name,
+      clientId: Number(client.id),
+      owner: owner?.name ?? currentUser?.fullName ?? "",
+      ownerId: owner ? Number(owner.id) : currentUser?.id,
       date: fd.get("date")?.toString() || today,
       time: fd.get("time")?.toString() || "09:00",
       status: "à faire",
@@ -94,22 +105,8 @@ export function NewActivityDialog({ trigger, defaultClient, open, onOpenChange, 
     setActivities([newAct, ...activities]);
     onAdd?.(newAct);
 
-    const newDeal = {
-      id: `deal_${Date.now()}`,
-      client: newAct.client,
-      company: "À définir",
-      amount: 0,
-      probability: 10,
-      owner: newAct.owner,
-      lastActivity: newAct.type,
-      nextAction: "Prise de contact",
-      closeDate: "À définir",
-      stage: "Nouveau lead" as Stage,
-    };
-    setDeals([newDeal, ...deals]);
-
     setOpen(false);
-    toast.success("Activité et opportunité créées", { description: "L'activité a été ajoutée et envoyée vers le pipeline." });
+    toast.success("Activité créée", { description: `"${newAct.title}" a été planifiée avec ${client.name}.` });
   };
 
   return (
@@ -158,21 +155,31 @@ export function NewActivityDialog({ trigger, defaultClient, open, onOpenChange, 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold uppercase text-muted-foreground">Client</label>
-              <input
-                name="client"
+              <select
+                name="clientId"
                 required
-                className="mt-1.5 w-full h-10 rounded-lg border border-input px-3 text-sm outline-none focus:border-ring"
-                placeholder="Rechercher…"
-                defaultValue={defaultClient}
-              />
+                className="mt-1.5 w-full h-10 rounded-lg border border-input px-3 text-sm outline-none focus:border-ring bg-card"
+                defaultValue={clients.find((c) => c.name === defaultClient)?.id ?? ""}
+              >
+                <option value="" disabled>Sélectionnez un client</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}{c.company ? ` — ${c.company}` : ""}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-xs font-semibold uppercase text-muted-foreground">Responsable</label>
-              <input
-                name="owner"
-                className="mt-1.5 w-full h-10 rounded-lg border border-input px-3 text-sm outline-none focus:border-ring"
-                defaultValue="Léa Martin"
-              />
+              <select
+                name="ownerId"
+                className="mt-1.5 w-full h-10 rounded-lg border border-input px-3 text-sm outline-none focus:border-ring bg-card"
+                defaultValue={currentUser ? String(currentUser.id) : ""}
+              >
+                {members
+                  .filter((m) => m.status !== "Désactivé")
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+              </select>
             </div>
             <div>
               <label className="text-xs font-semibold uppercase text-muted-foreground">Date</label>

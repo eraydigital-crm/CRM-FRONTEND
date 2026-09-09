@@ -2,7 +2,7 @@ import { usePageMeta } from "@/hooks/use-page-meta";
 import { useMemo, useState } from "react";
 import { useFilteredCollection } from "@/hooks/use-filtered-collection";
 import { Plus, Filter, Calendar as CalendarIcon, Check, Users, Search, X, Trash2 } from "lucide-react";
-import { members, type TaskStatus, type Project, type ProjectTask } from "@/lib/crm-data";
+import { type TaskStatus, type Project, type ProjectTask } from "@/lib/crm-data";
 import { useCRM } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -27,7 +27,7 @@ const taskStatusColors: Record<TaskStatus, string> = {
 
 export default function ProjectsPage() {
   usePageMeta("Projets — Eray CRM", "Suivi simple des projets clients.");
-  const { projects, setProjects } = useCRM();
+  const { projects, setProjects, members } = useCRM();
   const [taskStatusFilter, setTaskStatusFilter] = useState<TaskStatus[]>([...taskStatuses]);
   const [memberFilter, setMemberFilter] = useState<string[]>([]); // initials
   

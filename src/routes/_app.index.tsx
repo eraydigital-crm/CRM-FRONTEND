@@ -5,7 +5,9 @@ import {
   AlertCircle,
   ArrowUpRight,
 } from "lucide-react";
-import { kpis as initialKpis, revenueSeries } from "@/lib/crm-data";
+import { useQuery } from "@tanstack/react-query";
+import { wonStages } from "@/lib/crm-data";
+import { dashboardApi } from "@/lib/api/endpoints";
 import { useCRM } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { ActivityIcon, StatusBadge, PriorityDot } from "@/components/crm-atoms";
@@ -23,19 +25,28 @@ export default function Dashboard() {
     "Tableau de bord — Eray CRM",
     "Pilotez vos ventes, activités et opportunités en un coup d'œil."
   );
-  const { clients, deals, activities } = useCRM();
-  const userName = localStorage.getItem("name") || sessionStorage.getItem("name") || "Léa";
+  const { clients, deals, activities, currentUser } = useCRM();
+  const userName = currentUser?.firstName ?? "—";
 
-  // Calculate dynamic KPIs
-  const totalPotential = deals.reduce((acc, d) => acc + d.amount, 0);
-  const totalWon = deals.filter(d => ["Contrat signé", "Vente gagnée", "Ambassadeur"].includes(d.stage)).reduce((acc, d) => acc + d.amount, 0);
-  const winRate = deals.length > 0 ? Math.round((deals.filter(d => ["Contrat signé", "Vente gagnée", "Ambassadeur"].includes(d.stage)).length / deals.length) * 100) : 0;
-  
+  // Aggregates come from the API so a COMMERCIAL sees their own scope and a
+  // MANAGER the whole company - exactly like the rest of the screens.
+  const { data: stats } = useQuery({
+    queryKey: ["dashboard-statistics"],
+    queryFn: ({ signal }) => dashboardApi.statistics(signal),
+  });
+
+  const totalPotential = stats?.totalOpportunityValue ?? deals.reduce((acc, d) => acc + d.amount, 0);
+  const totalWon = deals.filter((d) => wonStages.includes(d.stage)).reduce((acc, d) => acc + d.amount, 0);
+  const wonCount = stats?.wonOpportunities ?? deals.filter((d) => wonStages.includes(d.stage)).length;
+  const lostCount = stats?.lostOpportunities ?? deals.filter((d) => d.stage === "Vente perdue").length;
+  const closed = wonCount + lostCount;
+  const winRate = closed > 0 ? Math.round((wonCount / closed) * 100) : 0;
+
   const kpis = [
-    { label: "Prospects", value: clients.filter(c => c.status === "prospect").length.toString(), delta: "+12%", tone: "brand" as const },
-    { label: "Clients actifs", value: clients.filter(c => c.status === "actif" || c.status === "vip").length.toString(), delta: "+4%", tone: "success" as const },
-    { label: "Opportunités gagnées", value: deals.filter(d => ["Contrat signé", "Vente gagnée", "Ambassadeur"].includes(d.stage)).length.toString(), delta: "+8%", tone: "violet" as const },
-    { label: "Opportunités perdues", value: deals.filter(d => d.stage === "Vente perdue").length.toString(), delta: "-2%", tone: "destructive" as const },
+    { label: "Prospects", value: String(stats?.prospects ?? clients.filter((c) => c.status === "prospect").length), delta: "+12%", tone: "brand" as const },
+    { label: "Clients actifs", value: String(stats?.activeClients ?? clients.filter((c) => c.status === "actif" || c.status === "vip").length), delta: "+4%", tone: "success" as const },
+    { label: "Opportunités gagnées", value: String(wonCount), delta: "+8%", tone: "violet" as const },
+    { label: "Opportunités perdues", value: String(lostCount), delta: "-2%", tone: "destructive" as const },
     { label: "CA potentiel", value: `${(totalPotential / 1000).toFixed(0)} K MGA`, delta: "+18%", tone: "brand" as const },
     { label: "CA signé", value: `${(totalWon / 1000).toFixed(0)} K MGA`, delta: "+22%", tone: "success" as const },
     { label: "Taux de conversion", value: `${winRate}%`, delta: "+3 pts", tone: "violet" as const },
@@ -254,14 +265,30 @@ function SectionHeader({ title, count, link, tone }: { title: string; count?: nu
 
 
 function RevenueChart() {
-  const max = 130;
+  const { data: stats } = useQuery({
+    queryKey: ["dashboard-statistics"],
+    queryFn: ({ signal }) => dashboardApi.statistics(signal),
+  });
+
+  // revenueByMonth is keyed "2026-07" -> signed amount; "po" keeps the
+  // potential series the design expects alongside the realised one.
+  const entries = Object.entries(stats?.revenueByMonth ?? {}).slice(-7);
+  const monthLabels = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
+  const points = entries.length
+    ? entries.map(([key, amount]) => ({
+        m: monthLabels[Number(key.slice(5, 7)) - 1] ?? key,
+        ca: Math.round(amount / 1000),
+        po: Math.round(amount / 1000),
+      }))
+    : [{ m: "—", ca: 0, po: 0 }];
+
+  const max = Math.max(130, ...points.map((p) => Math.max(p.ca, p.po)));
   const width = 100;
   const height = 60;
-  const points = revenueSeries;
   const toPath = (key: "ca" | "po") =>
     points
       .map((p, i) => {
-        const x = (i / (points.length - 1)) * width;
+        const x = points.length > 1 ? (i / (points.length - 1)) * width : 0;
         const y = height - (p[key] / max) * height;
         return `${i === 0 ? "M" : "L"}${x},${y}`;
       })
@@ -269,7 +296,7 @@ function RevenueChart() {
   const toArea = (key: "ca" | "po") => {
     const line = points
       .map((p, i) => {
-        const x = (i / (points.length - 1)) * width;
+        const x = points.length > 1 ? (i / (points.length - 1)) * width : 0;
         const y = height - (p[key] / max) * height;
         return `${i === 0 ? "M" : "L"}${x},${y}`;
       })

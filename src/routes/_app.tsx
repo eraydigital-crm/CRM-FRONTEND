@@ -3,12 +3,13 @@ import { useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppTopbar } from "@/components/app-topbar";
 import { Toaster } from "@/components/ui/sonner";
+import { session } from "@/lib/api/http";
 
 export default function AppLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-
-  if (!token) {
+  // Either a stored Bearer token (cross-origin setup) or the cookie session
+  // flag set by the backend when the front is served same-origin.
+  if (!session.isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 

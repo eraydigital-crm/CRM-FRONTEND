@@ -1,7 +1,7 @@
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useState, useMemo, useEffect } from "react";
 import { Plus, Shield, Users as UsersIcon, Eye, Edit, Trash2, KeyRound, Power, Search, X } from "lucide-react";
-import { members as initialMembers, Member } from "@/lib/crm-data";
+import { Member } from "@/lib/crm-data";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -32,7 +32,9 @@ export default function UsersPage() {
   const [dialogType, setDialogType] = useState<"details" | "edit" | null>(null);
 
   const [inviteEmail, setInviteEmail] = useState("");
-  const [invitePhone, setInvitePhone] = useState("");
+  const [inviteFirstName, setInviteFirstName] = useState("");
+  const [inviteLastName, setInviteLastName] = useState("");
+  const [inviteTeam, setInviteTeam] = useState("");
   const [inviteRole, setInviteRole] = useState<Member["role"]>("Commercial");
 
   // Filtering states
@@ -74,27 +76,48 @@ export default function UsersPage() {
   }, [filteredUsers, activePage]);
 
   const handleInvite = () => {
-    if (inviteEmail) {
-      const newUser: Member = {
-        id: `u${Date.now()}`,
-        name: "Nouvel Utilisateur",
-        email: inviteEmail,
-        phone: invitePhone || "+33 6 00 00 00 00",
-        role: inviteRole,
-        team: "Non assigné",
-        status: "Invité",
-        lastActive: "Jamais",
-        initials: inviteEmail.substring(0, 2).toUpperCase()
-      };
-      setUsers([newUser, ...users]);
-      setInviteEmail("");
-      setInvitePhone("");
-      setIsInviteOpen(false);
+    if (!inviteEmail || !inviteFirstName || !inviteLastName) {
+      toast.error("Informations incomplètes", {
+        description: "Prénom, nom et e-mail sont nécessaires pour envoyer une invitation.",
+      });
+      return;
     }
+
+    const fullName = `${inviteFirstName} ${inviteLastName}`;
+    const newUser: Member = {
+      id: `u${Date.now()}`,
+      name: fullName,
+      firstName: inviteFirstName,
+      lastName: inviteLastName,
+      email: inviteEmail,
+      phone: "",
+      role: inviteRole,
+      team: inviteTeam || "Non assigné",
+      status: "Invité",
+      lastActive: "Jamais",
+      initials: `${inviteFirstName.charAt(0)}${inviteLastName.charAt(0)}`.toUpperCase(),
+    };
+
+    // The backend mails an invitation with a password-setup link.
+    setUsers([newUser, ...users]);
+    setInviteEmail("");
+    setInviteFirstName("");
+    setInviteLastName("");
+    setInviteTeam("");
+    setIsInviteOpen(false);
+    toast.success("Invitation envoyée", { description: `${fullName} recevra un e-mail pour définir son mot de passe.` });
   };
 
+  /**
+   * A user is never deleted: they stay the owner of their clients and deals,
+   * so the account is deactivated instead (PATCH /api/users/{id}/status).
+   */
   const handleDelete = (id: string) => {
-    setUsers(users.filter(u => u.id !== id));
+    const target = users.find((u) => u.id === id);
+    setUsers(users.map((u) => (u.id === id ? { ...u, status: "Désactivé" } : u)));
+    toast.success("Compte désactivé", {
+      description: `${target?.name ?? "Ce membre"} ne peut plus se connecter.`,
+    });
   };
 
   const handleEditSave = () => {
@@ -138,14 +161,33 @@ export default function UsersPage() {
                   className="mt-2"
                 />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="firstName">Prénom</Label>
+                  <Input
+                    id="firstName"
+                    value={inviteFirstName}
+                    onChange={(e) => setInviteFirstName(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lastName">Nom</Label>
+                  <Input
+                    id="lastName"
+                    value={inviteLastName}
+                    onChange={(e) => setInviteLastName(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
+              </div>
               <div>
-                <Label htmlFor="phone">Téléphone</Label>
-                <Input 
-                  id="phone" 
-                  type="text" 
-                  placeholder="+33 6 12 45 78 90" 
-                  value={invitePhone} 
-                  onChange={(e) => setInvitePhone(e.target.value)} 
+                <Label htmlFor="team">Équipe</Label>
+                <Input
+                  id="team"
+                  placeholder="Ex : Ventes B2B"
+                  value={inviteTeam}
+                  onChange={(e) => setInviteTeam(e.target.value)}
                   className="mt-2"
                 />
               </div>
