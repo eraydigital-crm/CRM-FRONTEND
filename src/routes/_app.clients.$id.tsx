@@ -35,8 +35,8 @@ export default function ClientDetail() {
     clients: allClients,
     activities,
     isLoading,
-    projectForCompany,
-    projectsForCompany,
+    projectForClient,
+    projectsForClient,
     eventsForClient,
   } = useCRM();
   const client = allClients.find((c) => c.id === id);
@@ -59,8 +59,8 @@ export default function ClientDetail() {
     );
   }
 
-  const project = projectForCompany(client.company);
-  const clientProjects = projectsForCompany(client.company);
+  const project = projectForClient(client.id);
+  const clientProjects = projectsForClient(client.id);
   const { past: pastEvents, upcoming: upcomingEvents } = eventsForClient(client.name);
   const clientActivities = activities.filter((a) => a.client === client.name);
   const past = clientActivities.filter((a) => a.status === "terminé");

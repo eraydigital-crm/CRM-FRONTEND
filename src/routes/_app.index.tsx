@@ -1,17 +1,24 @@
 import { Link } from "react-router";
 import {
   TrendingUp,
-  TrendingDown,
   AlertCircle,
   ArrowUpRight,
 } from "lucide-react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { wonStages } from "@/lib/crm-data";
+import { wonStages, lostStages, stageColors, type Activity } from "@/lib/crm-data";
 import { dashboardApi } from "@/lib/api/endpoints";
+import { parseUiDate, isoDay } from "@/lib/api/mappers";
 import { useCRM } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { ActivityIcon, StatusBadge, PriorityDot } from "@/components/crm-atoms";
 import { usePageMeta } from "@/hooks/use-page-meta";
+
+const meetingTypeMeta: Record<string, { tag: string; color: string }> = {
+  call: { tag: "Appel", color: "bg-primary" },
+  meeting: { tag: "RDV", color: "bg-violet" },
+  visit: { tag: "Visite", color: "bg-emerald-500" },
+};
 
 const toneMap = {
   brand: "text-primary bg-primary/10",
@@ -42,15 +49,61 @@ export default function Dashboard() {
   const closed = wonCount + lostCount;
   const winRate = closed > 0 ? Math.round((wonCount / closed) * 100) : 0;
 
+  // Répartition du pipeline ACTIF (hors opportunités gagnées/perdues) par étape,
+  // pondérée par valeur (MGA) plutôt que par nombre d'opportunités — les 5 étapes
+  // les plus importantes, en pourcentage de la valeur totale du pipeline ouvert.
+  const pipelineBreakdown = useMemo(() => {
+    const open = deals.filter((d) => !wonStages.includes(d.stage) && !lostStages.includes(d.stage));
+    const totalOpenValue = open.reduce((acc, d) => acc + d.amount, 0);
+    if (totalOpenValue === 0) return [];
+
+    const byStage = new Map<string, number>();
+    for (const d of open) {
+      byStage.set(d.stage, (byStage.get(d.stage) ?? 0) + d.amount);
+    }
+
+    return Array.from(byStage.entries())
+      .map(([stage, value]) => ({
+        label: stage,
+        value: Math.round((value / totalOpenValue) * 100),
+        color: stageColors[stage as keyof typeof stageColors] ?? "bg-muted-foreground",
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+  }, [deals]);
+
   const kpis = [
-    { label: "Prospects", value: String(stats?.prospects ?? clients.filter((c) => c.status === "prospect").length), delta: "+12%", tone: "brand" as const },
-    { label: "Clients actifs", value: String(stats?.activeClients ?? clients.filter((c) => c.status === "actif" || c.status === "vip").length), delta: "+4%", tone: "success" as const },
-    { label: "Opportunités gagnées", value: String(wonCount), delta: "+8%", tone: "violet" as const },
-    { label: "Opportunités perdues", value: String(lostCount), delta: "-2%", tone: "destructive" as const },
-    { label: "CA potentiel", value: `${(totalPotential / 1000).toFixed(0)} K MGA`, delta: "+18%", tone: "brand" as const },
-    { label: "CA signé", value: `${(totalWon / 1000).toFixed(0)} K MGA`, delta: "+22%", tone: "success" as const },
-    { label: "Taux de conversion", value: `${winRate}%`, delta: "+3 pts", tone: "violet" as const },
+    { label: "Prospects", value: String(stats?.prospects ?? clients.filter((c) => c.status === "prospect").length), tone: "brand" as const },
+    { label: "Clients actifs", value: String(stats?.activeClients ?? clients.filter((c) => c.status === "actif" || c.status === "vip").length), tone: "success" as const },
+    { label: "Opportunités gagnées", value: String(wonCount), tone: "violet" as const },
+    { label: "Opportunités perdues", value: String(lostCount), tone: "destructive" as const },
+    { label: "CA potentiel", value: `${(totalPotential / 1000).toFixed(0)} K MGA`, tone: "brand" as const },
+    { label: "CA signé", value: `${(totalWon / 1000).toFixed(0)} K MGA`, tone: "success" as const },
+    { label: "Taux de conversion", value: `${winRate}%`, tone: "violet" as const },
   ];
+
+  // "Aujourd'hui" au sens propre du terme : jour civil réel, pas une étiquette de démo.
+  const todayIso = isoDay(new Date());
+  const isToday = (a: Activity) => {
+    const d = parseUiDate(a.date);
+    return d ? isoDay(d) === todayIso : false;
+  };
+
+  const todayTasks = activities.filter(isToday).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+
+  const todayMeetings = activities
+    .filter((a) => (a.type === "call" || a.type === "meeting" || a.type === "visit") && isToday(a))
+    .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+
+  // Une seule et même définition du "en retard" : le statut réel, pas un mélange
+  // avec une activité haute priorité qui n'a rien à voir (elle pouvait apparaître
+  // en double, ou faire croire qu'une activité à l'heure était en retard).
+  const overdueActivities = activities.filter((a) => a.status === "en retard");
+
+  const topOpportunities = deals
+    .filter((d) => !wonStages.includes(d.stage) && !lostStages.includes(d.stage))
+    .slice()
+    .sort((a, b) => b.amount - a.amount);
 
   return (
     <div className="space-y-6">
@@ -71,24 +124,15 @@ export default function Dashboard() {
 
       {/* KPI grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
-        {kpis.map((k) => {
-          const positive = k.delta.startsWith("+");
-          return (
-            <div key={k.label} className="card-elegant p-4 hover:shadow-float transition-shadow">
-              <div className="flex items-center justify-between">
-                <span className={`h-8 w-8 rounded-lg grid place-items-center ${toneMap[k.tone]}`}>
-                  <TrendingUp className="h-4 w-4" />
-                </span>
-                <span className={`text-[11px] font-semibold ${positive ? "text-emerald-600" : "text-rose-600"} flex items-center gap-0.5`}>
-                  {positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {k.delta}
-                </span>
-              </div>
-              <div className="mt-3 text-[11px] text-muted-foreground uppercase tracking-wide">{k.label}</div>
-              <div className="text-xl font-bold font-display mt-0.5">{k.value}</div>
-            </div>
-          );
-        })}
+        {kpis.map((k) => (
+          <div key={k.label} className="card-elegant p-4 hover:shadow-float transition-shadow">
+            <span className={`h-8 w-8 rounded-lg grid place-items-center ${toneMap[k.tone]}`}>
+              <TrendingUp className="h-4 w-4" />
+            </span>
+            <div className="mt-3 text-[11px] text-muted-foreground uppercase tracking-wide">{k.label}</div>
+            <div className="text-xl font-bold font-display mt-0.5">{k.value}</div>
+          </div>
+        ))}
       </div>
 
       {/* Charts row */}
@@ -109,25 +153,25 @@ export default function Dashboard() {
 
         <div className="card-elegant p-6">
           <h3 className="font-display font-bold text-lg">Répartition pipeline</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Par étape commerciale</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Par étape commerciale, en valeur</p>
           <div className="mt-6 space-y-3.5">
-            {[
-              { label: "Négociation", value: 32, color: "bg-primary" },
-              { label: "Proposition envoyée", value: 24, color: "bg-violet" },
-              { label: "Qualification", value: 18, color: "bg-sky-500" },
-              { label: "Premier échange", value: 14, color: "bg-emerald-500" },
-              { label: "À contacter", value: 12, color: "bg-amber-500" },
-            ].map((s) => (
-              <div key={s.label}>
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="font-medium">{s.label}</span>
-                  <span className="text-muted-foreground">{s.value}%</span>
+            {pipelineBreakdown.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-6 text-center">
+                Aucune opportunité active dans le pipeline pour le moment.
+              </p>
+            ) : (
+              pipelineBreakdown.map((s) => (
+                <div key={s.label}>
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span className="font-medium">{s.label}</span>
+                    <span className="text-muted-foreground">{s.value}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div className={`h-full ${s.color} rounded-full`} style={{ width: `${s.value}%` }} />
+                  </div>
                 </div>
-                <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div className={`h-full ${s.color} rounded-full`} style={{ width: `${s.value * 2.5}%` }} />
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -135,58 +179,71 @@ export default function Dashboard() {
       {/* Bottom row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="card-elegant p-6">
-          <SectionHeader title="Tâches du jour" count={5} link="/activities" />
+          <SectionHeader title="Tâches du jour" count={todayTasks.length} link="/activities" />
           <ul className="mt-4 space-y-2.5">
-            {activities.slice(0, 5).map((a) => (
-              <li key={a.id} className="flex items-center gap-3 group">
-                <input type="checkbox" className="h-4 w-4 rounded border-border accent-primary" />
-                <ActivityIcon type={a.type} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{a.title}</div>
-                  <div className="text-[11px] text-muted-foreground">{a.client} • {a.time}</div>
-                </div>
-                <PriorityDot priority={a.priority} />
-              </li>
-            ))}
+            {todayTasks.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-6 text-center">Rien de prévu aujourd'hui.</p>
+            ) : (
+              todayTasks.slice(0, 5).map((a) => (
+                <li key={a.id} className="flex items-center gap-3 group">
+                  <input type="checkbox" checked={a.status === "terminé"} readOnly className="h-4 w-4 rounded border-border accent-primary" />
+                  <ActivityIcon type={a.type} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{a.title}</div>
+                    <div className="text-[11px] text-muted-foreground">{a.client} • {a.time}</div>
+                  </div>
+                  <PriorityDot priority={a.priority} />
+                </li>
+              ))
+            )}
           </ul>
         </div>
 
         <div className="card-elegant p-6">
-          <SectionHeader title="Rendez-vous du jour" count={3} link="/calendar" />
+          <SectionHeader title="Rendez-vous du jour" count={todayMeetings.length} link="/calendar" />
           <ul className="mt-4 space-y-3">
-            {[
-              { time: "09:30", title: "Appel Sophie Laurent", tag: "Appel", color: "bg-primary" },
-              { time: "11:00", title: "Démo Logipro Industries", tag: "Démo", color: "bg-violet" },
-              { time: "15:00", title: "Café stratégie GreenTech", tag: "RDV", color: "bg-emerald-500" },
-            ].map((e) => (
-              <li key={e.time} className="flex gap-3 p-2 rounded-lg hover:bg-muted/60 transition-colors">
-                <div className="w-12 shrink-0 text-right">
-                  <div className="text-sm font-semibold">{e.time}</div>
-                  <div className="text-[10px] text-muted-foreground uppercase">{e.tag}</div>
-                </div>
-                <div className={`w-0.5 rounded-full ${e.color}`} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium">{e.title}</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">30 minutes • Visio</div>
-                </div>
-              </li>
-            ))}
+            {todayMeetings.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-6 text-center">Aucun rendez-vous aujourd'hui.</p>
+            ) : (
+              todayMeetings.slice(0, 5).map((a) => {
+                const meta = meetingTypeMeta[a.type] ?? { tag: "RDV", color: "bg-primary" };
+                return (
+                  <li key={a.id} className="flex gap-3 p-2 rounded-lg hover:bg-muted/60 transition-colors">
+                    <div className="w-12 shrink-0 text-right">
+                      <div className="text-sm font-semibold">{a.time}</div>
+                      <div className="text-[10px] text-muted-foreground uppercase">{meta.tag}</div>
+                    </div>
+                    <div className={`w-0.5 rounded-full ${meta.color}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{a.title}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                        {a.client}{a.duration ? ` • ${a.duration}` : ""}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })
+            )}
           </ul>
         </div>
 
         <div className="card-elegant p-6">
-          <SectionHeader title="Activités en retard" count={2} link="/activities" tone="destructive" />
+          <SectionHeader title="Activités en retard" count={overdueActivities.length} link="/activities" tone="destructive" />
           <ul className="mt-4 space-y-3">
-            {activities.filter((a) => a.status === "en retard").concat(activities.filter(a => a.priority === "high").slice(0,1)).slice(0, 3).map((a) => (
-              <li key={a.id} className="flex items-start gap-3 p-3 rounded-lg bg-rose-50/60 border border-rose-100">
-                <AlertCircle className="h-4 w-4 text-rose-500 mt-0.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{a.title}</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">{a.client} • {a.date}</div>
-                </div>
-                <Button size="sm" variant="outline" className="h-7 text-xs">Reporter</Button>
-              </li>
-            ))}
+            {overdueActivities.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-6 text-center">Aucune activité en retard 🎉</p>
+            ) : (
+              overdueActivities.slice(0, 3).map((a) => (
+                <li key={a.id} className="flex items-start gap-3 p-3 rounded-lg bg-rose-50/60 border border-rose-100">
+                  <AlertCircle className="h-4 w-4 text-rose-500 mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{a.title}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">{a.client} • {a.date}</div>
+                  </div>
+                  <Button size="sm" variant="outline" className="h-7 text-xs">Reporter</Button>
+                </li>
+              ))
+            )}
           </ul>
         </div>
       </div>
@@ -196,6 +253,9 @@ export default function Dashboard() {
         <div className="card-elegant p-6 lg:col-span-3">
           <SectionHeader title="Activités récentes" link="/activities" />
           <ul className="mt-4 divide-y divide-border">
+            {activities.length === 0 && (
+              <p className="text-xs text-muted-foreground py-6 text-center">Aucune activité pour le moment.</p>
+            )}
             {activities.slice(0, 5).map((a) => (
               <li key={a.id} className="py-3 flex items-center gap-3">
                 <ActivityIcon type={a.type} />
@@ -213,7 +273,10 @@ export default function Dashboard() {
         <div className="card-elegant p-6 lg:col-span-2">
           <SectionHeader title="Top opportunités" link="/pipeline" />
           <ul className="mt-4 space-y-3">
-            {deals.filter(d => d.stage !== "Vente gagnée" && d.stage !== "Vente perdue" && d.stage !== "Ambassadeur").slice(0, 4).map((d) => (
+            {topOpportunities.length === 0 && (
+              <p className="text-xs text-muted-foreground py-6 text-center">Aucune opportunité active pour le moment.</p>
+            )}
+            {topOpportunities.slice(0, 4).map((d) => (
               <li key={d.id} className="p-3 rounded-lg border border-border hover:border-primary/30 hover:shadow-elegant transition-all">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">

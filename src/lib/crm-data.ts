@@ -105,6 +105,25 @@ export const stages: Stage[] = [
 export const wonStages: Stage[] = ["Contrat signé", "Vente gagnée", "Ambassadeur"];
 export const lostStages: Stage[] = ["Vente perdue"];
 
+/** Couleur associée à chaque étape — partagée entre le pipeline et le tableau de bord. */
+export const stageColors: Record<Stage, string> = {
+  "Nouveau lead": "bg-slate-500",
+  "Premier contact": "bg-blue-500",
+  "Qualification": "bg-sky-500",
+  "Rendez-vous planifié": "bg-cyan-500",
+  "Analyse des besoins": "bg-teal-500",
+  "Démonstration": "bg-indigo-500",
+  "Devis envoyé": "bg-violet-500",
+  "Négociation": "bg-fuchsia-500",
+  "Relance 1": "bg-amber-500",
+  "Relance 2": "bg-orange-500",
+  "Relance finale": "bg-rose-500",
+  "Contrat signé": "bg-emerald-500",
+  "Vente gagnée": "bg-emerald-600",
+  "Vente perdue": "bg-slate-400",
+  "Ambassadeur": "bg-yellow-500",
+};
+
 export type Deal = {
   id: string;
   client: string;
@@ -190,14 +209,16 @@ export function clientHistorySummary(events: ClientEvent[], name: string) {
   };
 }
 
-export function projectsForCompany(projects: Project[], company: string): Project[] {
-  const needle = (company || "").toLowerCase();
-  if (!needle) return [];
-  return projects.filter(
-    (p) => needle.includes(p.client.toLowerCase()) || p.client.toLowerCase().includes(needle),
-  );
+// Rattache les projets au client via clientId (clé stable partagée par les deux entités),
+// plutôt que par une comparaison de texte entre le nom du contact et celui de l'entreprise
+// (deux champs distincts qui ne coïncident quasiment jamais).
+export function projectsForClient(projects: Project[], clientId: string | number | undefined): Project[] {
+  if (clientId === undefined || clientId === null || clientId === "") return [];
+  const needle = Number(clientId);
+  if (Number.isNaN(needle)) return [];
+  return projects.filter((p) => p.clientId === needle);
 }
 
-export function projectForCompany(projects: Project[], company: string): Project | undefined {
-  return projectsForCompany(projects, company)[0];
+export function projectForClient(projects: Project[], clientId: string | number | undefined): Project | undefined {
+  return projectsForClient(projects, clientId)[0];
 }

@@ -66,7 +66,7 @@ const TABLE_ROW_HEIGHT = 76;
 
 export default function ClientsPage() {
   usePageMeta("Clients — Eray CRM", "Gérez vos clients et prospects avec filtres avancés.");
-  const { clients: clientList, setClients: setClientList, projectsForCompany, clientHistorySummary } = useCRM();
+  const { clients: clientList, setClients: setClientList, projectsForClient, clientHistorySummary } = useCRM();
   const [view, setView] = useState<"table" | "cards">("table");
   const [query, setQuery] = useState("");
   const [selectedClient, setSelectedClient] = useState<any>(null);
@@ -341,7 +341,7 @@ export default function ClientsPage() {
               ) : (
                 rowVirtualizer.getVirtualItems().map((virtualRow) => {
                   const c = filtered[virtualRow.index];
-                  const projs = projectsForCompany(c.company);
+                  const projs = projectsForClient(c.id);
                   const hist = clientHistorySummary(c.name);
 
                   return (
@@ -729,8 +729,8 @@ function ClientDetailsModal({
   onClose: () => void;
   onEdit: () => void;
 }) {
-  const { projectsForCompany, clientHistorySummary } = useCRM();
-  const projs = projectsForCompany(client.company);
+  const { projectsForClient, clientHistorySummary } = useCRM();
+  const projs = projectsForClient(client.id);
   const hist = clientHistorySummary(client.name);
 
   return (

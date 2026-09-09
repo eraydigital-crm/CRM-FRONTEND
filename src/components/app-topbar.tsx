@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router";
 import { Search, Bell, Plus, ChevronDown, Command, Menu, Sun, Moon } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import logoUrl from "@/assets/eray.jpg";
 import {
@@ -19,7 +21,9 @@ import {
   NewEventDialog,
 } from "@/components/quick-create-dialogs";
 import { NewActivityDialog } from "@/components/new-activity-dialog";
-import { authApi } from "@/lib/api/endpoints";
+import { authApi, notificationsApi } from "@/lib/api/endpoints";
+import { relativeLabel } from "@/lib/api/mappers";
+import type { ApiNotification } from "@/lib/api/types";
 import { useCRM } from "@/lib/store";
 
 const Route = {
@@ -116,6 +120,38 @@ export function AppTopbar({ onMobileMenuClick }: AppTopbarProps) {
     setTheme((prev) => (prev === "Sombre" ? "Clair" : "Sombre"));
   };
 
+  const queryClient = useQueryClient();
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const { data: notifications = [] } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: ({ signal }) => notificationsApi.list(signal),
+    refetchInterval: 60_000,
+  });
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+  const sortedNotifications = useMemo(
+    () => [...notifications].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [notifications],
+  );
+
+  const markRead = useMutation({
+    mutationFn: (id: number) => notificationsApi.markRead(id),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    onError: () => toast.error("Impossible de marquer cette notification comme lue"),
+  });
+
+  const markAllRead = useMutation({
+    mutationFn: () => notificationsApi.markAllRead(),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    onError: () => toast.error("Impossible de marquer les notifications comme lues"),
+  });
+
+  const handleNotificationClick = (n: ApiNotification) => {
+    if (!n.read) markRead.mutate(n.id);
+    setNotifOpen(false);
+    if (n.link) navigate(n.link);
+  };
+
   return (
     <header className="sticky top-0 z-20 h-16 bg-card/85 backdrop-blur-xl border-b border-border shadow-xs transition-colors">
       <div className="h-full px-4 lg:px-6 flex items-center gap-3">
@@ -198,10 +234,55 @@ export function AppTopbar({ onMobileMenuClick }: AppTopbarProps) {
             )}
           </button>
 
-          <button className="relative h-9 w-9 grid place-items-center rounded-lg hover:bg-muted transition-colors">
-            <Bell className="h-4.5 w-4.5 text-muted-foreground" />
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
-          </button>
+          <DropdownMenu open={notifOpen} onOpenChange={setNotifOpen}>
+            <DropdownMenuTrigger asChild>
+              <button className="relative h-9 w-9 grid place-items-center rounded-lg hover:bg-muted transition-colors" aria-label="Notifications">
+                <Bell className="h-4.5 w-4.5 text-muted-foreground" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-white text-[9px] font-bold grid place-items-center ring-2 ring-background">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 p-0">
+              <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
+                <span className="text-sm font-semibold">Notifications</span>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={() => markAllRead.mutate()}
+                    className="text-[11px] font-medium text-primary hover:underline"
+                  >
+                    Tout marquer comme lu
+                  </button>
+                )}
+              </div>
+              <div className="max-h-96 overflow-y-auto scrollbar-thin">
+                {sortedNotifications.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-8">Aucune notification.</p>
+                ) : (
+                  sortedNotifications.slice(0, 15).map((n) => (
+                    <button
+                      key={n.id}
+                      onClick={() => handleNotificationClick(n)}
+                      className={`w-full text-left px-3 py-2.5 border-b border-border/60 last:border-0 hover:bg-muted/60 transition-colors flex gap-2 ${!n.read ? "bg-primary/5" : ""}`}
+                    >
+                      <span className={`mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 ${!n.read ? "bg-primary" : "bg-transparent"}`} />
+                      <span className="min-w-0 flex-1">
+                        <span className={`block text-xs ${!n.read ? "font-semibold" : "font-medium text-muted-foreground"}`}>
+                          {n.title}
+                        </span>
+                        {n.body && (
+                          <span className="block text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.body}</span>
+                        )}
+                        <span className="block text-[10px] text-muted-foreground/70 mt-1">{relativeLabel(n.createdAt)}</span>
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -42,7 +42,9 @@ export default function ProjectsPage() {
   const filters = useMemo(() => [
     (p: any) => projectStatusFilter.length === 0 || projectStatusFilter.includes(p.status),
     (p: any) => memberFilter.length === 0 || p.team.some((m: string) => memberFilter.includes(m)),
-    (p: any) => p.tasks.some((t: any) => taskStatusFilter.includes(t.status)),
+    // Un projet sans tâche (ex. tout juste créé) ne doit pas être exclu par le filtre de statut
+    // de tâche : .some() sur un tableau vide renvoie toujours false, ce qui le faisait disparaître.
+    (p: any) => p.tasks.length === 0 || p.tasks.some((t: any) => taskStatusFilter.includes(t.status)),
   ], [projectStatusFilter, memberFilter, taskStatusFilter]);
 
   const searchFields = useMemo(() => ["name" as const, "client" as const], []);

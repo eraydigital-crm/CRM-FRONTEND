@@ -42,8 +42,8 @@ import {
 import {
   clientHistorySummary as computeHistorySummary,
   eventsForClient as computeEventsForClient,
-  projectForCompany as computeProjectForCompany,
-  projectsForCompany as computeProjectsForCompany,
+  projectForClient as computeProjectForClient,
+  projectsForClient as computeProjectsForClient,
 } from "@/lib/crm-data";
 import type { Activity, Client, ClientEvent, Deal, Member, Project } from "@/lib/crm-data";
 import { numericId, useSyncedCollection } from "@/lib/use-synced-collection";
@@ -66,8 +66,8 @@ type CRMContextType = {
   refreshAll: () => void;
   eventsForClient: (name: string) => ReturnType<typeof computeEventsForClient>;
   clientHistorySummary: (name: string) => ReturnType<typeof computeHistorySummary>;
-  projectsForCompany: (company: string) => Project[];
-  projectForCompany: (company: string) => Project | undefined;
+  projectsForClient: (clientId: string | number | undefined) => Project[];
+  projectForClient: (clientId: string | number | undefined) => Project | undefined;
 };
 
 const CRMContext = createContext<CRMContextType | null>(null);
@@ -380,8 +380,8 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       refreshAll,
       eventsForClient: (name: string) => computeEventsForClient(clientEvents, name),
       clientHistorySummary: (name: string) => computeHistorySummary(clientEvents, name),
-      projectsForCompany: (company: string) => computeProjectsForCompany(projects.items, company),
-      projectForCompany: (company: string) => computeProjectForCompany(projects.items, company),
+      projectsForClient: (clientId: string | number | undefined) => computeProjectsForClient(projects.items, clientId),
+      projectForClient: (clientId: string | number | undefined) => computeProjectForClient(projects.items, clientId),
     }),
     [clients, activities, deals, projects, members, clientEvents, setClientEvents, currentUser, refreshAll],
   );

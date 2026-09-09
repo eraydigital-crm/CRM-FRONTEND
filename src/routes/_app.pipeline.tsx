@@ -2,30 +2,11 @@ import { usePageMeta } from "@/hooks/use-page-meta";
 import { useState, useMemo } from "react";
 import { useFilteredCollection } from "@/hooks/use-filtered-collection";
 import { Plus, Filter, LayoutGrid, List as ListIcon, MoreHorizontal, Clock, Calendar as CalendarIcon, Search, X } from "lucide-react";
-import { stages, type Stage } from "@/lib/crm-data";
+import { stages, stageColors, type Stage } from "@/lib/crm-data";
 import { useCRM } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NewOpportunityDialog } from "@/components/quick-create-dialogs";
-
-
-const stageColors: Record<Stage, string> = {
-  "Nouveau lead": "bg-slate-500",
-  "Premier contact": "bg-blue-500",
-  "Qualification": "bg-sky-500",
-  "Rendez-vous planifié": "bg-cyan-500",
-  "Analyse des besoins": "bg-teal-500",
-  "Démonstration": "bg-indigo-500",
-  "Devis envoyé": "bg-violet-500",
-  "Négociation": "bg-fuchsia-500",
-  "Relance 1": "bg-amber-500",
-  "Relance 2": "bg-orange-500",
-  "Relance finale": "bg-rose-500",
-  "Contrat signé": "bg-emerald-500",
-  "Vente gagnée": "bg-emerald-600",
-  "Vente perdue": "bg-slate-400",
-  "Ambassadeur": "bg-yellow-500",
-};
 
 export default function PipelinePage() {
   usePageMeta("Pipeline commercial — Eray CRM", "Suivez vos opportunités en vue Kanban et Liste.");
